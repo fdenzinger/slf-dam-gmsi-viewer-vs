@@ -102,19 +102,23 @@ html, body {
 
 #lang-toggle {
   display: flex;
-  gap: 6px;
-  margin: -8px 0 14px;
+  align-self: flex-start; /* #sidebar's default align-items:stretch would otherwise force full width */
+  border: 1px solid var(--slf-blue);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 0 0 16px;
 }
 .lang-btn {
-  border: 1px solid var(--slf-blue);
-  border-radius: 6px;
+  border: none;
   background: white;
   color: var(--slf-blue);
-  padding: 2px 9px;
-  font-size: 12px;
-  font-weight: 600;
+  padding: 6px 16px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   cursor: pointer;
 }
+.lang-btn + .lang-btn { border-left: 1px solid var(--slf-blue); }
 .lang-btn.active { background: var(--slf-blue); color: white; }
 
 #mode-toggle {
