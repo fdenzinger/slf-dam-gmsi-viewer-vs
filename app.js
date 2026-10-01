@@ -139,7 +139,8 @@ const BasemapControl = L.Control.extend({
     const container = L.DomUtil.create("div", "leaflet-bar basemap-control");
     const button = L.DomUtil.create("a", "basemap-control-btn", container);
     button.href = "#";
-    button.title = "Hintergrundkarte wechseln";
+    button.title = t("basemap.switch");
+    button.dataset.i18nTitle = "basemap.switch"; // keeps the title current across setLang()
     button.setAttribute("role", "button");
     button.innerHTML =
       '<svg width="18" height="18" viewBox="0 0 24 24">' +
@@ -150,14 +151,15 @@ const BasemapControl = L.Control.extend({
 
     const menu = L.DomUtil.create("div", "basemap-control-menu hidden", container);
     const options = [
-      { value: "grau", label: "Landeskarte grau" },
-      { value: "swissimage", label: "SWISSIMAGE" },
-      { value: "alti3d", label: "Relief swissALTI3D (Gelände)" },
-      { value: "surface3d", label: "Relief swissSURFACE3D (Oberfläche)" },
+      { value: "grau", key: "basemap.grau" },
+      { value: "swissimage", key: "basemap.swissimage" },
+      { value: "alti3d", key: "basemap.alti3d" },
+      { value: "surface3d", key: "basemap.surface3d" },
     ];
     options.forEach((opt) => {
       const item = L.DomUtil.create("div", "basemap-control-item", menu);
-      item.textContent = opt.label;
+      item.textContent = t(opt.key);
+      item.dataset.i18n = opt.key; // keeps the label current across setLang()
       item.dataset.value = opt.value;
       item.classList.toggle("active", opt.value === state.currentBasemap);
       item.addEventListener("click", () => {
@@ -184,9 +186,11 @@ const ShareControl = L.Control.extend({
     const container = L.DomUtil.create("div", "leaflet-bar basemap-control share-control");
     const button = L.DomUtil.create("a", "basemap-control-btn", container);
     button.href = "#";
-    button.title = "Link zu dieser Ansicht kopieren";
+    button.title = t("share.copyLink");
+    button.dataset.i18nTitle = "share.copyLink"; // keeps title+aria-label current across setLang()
+    button.dataset.i18nAriaLabel = "share.copyLink";
     button.setAttribute("role", "button");
-    button.setAttribute("aria-label", "Link zu dieser Ansicht kopieren");
+    button.setAttribute("aria-label", t("share.copyLink"));
     button.innerHTML =
       '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1c1e21" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
       '<path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.5 1.5"/>' +
@@ -203,10 +207,10 @@ const ShareControl = L.Control.extend({
         await navigator.clipboard.writeText(location.href);
       } catch (err) {
         ok = false;
-        window.prompt("Link zu dieser Ansicht:", location.href); // no clipboard access (e.g. plain http)
+        window.prompt(t("share.promptTitle"), location.href); // no clipboard access (e.g. plain http)
       }
       if (ok) {
-        toast.textContent = "Link kopiert";
+        toast.textContent = t("share.copied");
         toast.classList.remove("hidden");
         setTimeout(() => toast.classList.add("hidden"), 2000);
       }
@@ -339,17 +343,11 @@ function applyHashState() {
 
 function verdictFor(v) {
   if (v === null) {
-    return {
-      cls: "none", title: "Keine Daten",
-      text: "An dieser Stelle liegen keine Werte vor: entweder ausserhalb von Wallis oder in keinem Track auswertbar (Radarschatten, Layover oder zu geringe Kohärenz).",
-    };
+    return { cls: "none", title: t("verdict.none.title"), text: t("verdict.none.text") };
   }
-  if (v >= 0.4) return { cls: "good", title: "Gut geeignet", text: "Hier sind gute Radarmessungen mit Sentinel‑1 wahrscheinlich." };
-  if (v >= 0.2) return { cls: "mid", title: "Eingeschränkt geeignet", text: "Messungen sind möglich, die Ergebnisse sollten aber mit Vorsicht interpretiert werden." };
-  return {
-    cls: "bad", title: "Schwierig",
-    text: "Gute Messungen sind hier schwer zu erhalten. Ein tiefer Wert kann an der Geometrie liegen oder an einer sich rasch verändernden Oberfläche (z. B. Vegetation, Schnee oder eine Rutschung).",
-  };
+  if (v >= 0.4) return { cls: "good", title: t("verdict.good.title"), text: t("verdict.good.text") };
+  if (v >= 0.2) return { cls: "mid", title: t("verdict.mid.title"), text: t("verdict.mid.text") };
+  return { cls: "bad", title: t("verdict.bad.title"), text: t("verdict.bad.text") };
 }
 
 function el(tag, className, text) {
@@ -372,36 +370,36 @@ async function fetchHeight(x, y) {
 }
 
 async function buildTrackComparison(latlng, token, container) {
-  container.textContent = "Lade alle Tracks …";
+  container.textContent = t("summary.loadingAllTracks");
   if (state.summaryPopup) state.summaryPopup.update();
   // open all per-track files in parallel (only headers, a few requests each)
   await Promise.all(
-    TRACKS_VS.flatMap((t) => [`GMSI_VS_${t}.tif`, `GMSI_VS_shadow_layover_${t}.tif`])
+    TRACKS_VS.flatMap((track) => [`GMSI_VS_${track}.tif`, `GMSI_VS_shadow_layover_${track}.tif`])
       .filter((f) => state.layers[f])
       .map((f) => loadLazyLayer(f))
   );
   const rows = [];
-  for (const t of TRACKS_VS) {
-    const gEntry = state.layers[`GMSI_VS_${t}.tif`];
-    const sEntry = state.layers[`GMSI_VS_shadow_layover_${t}.tif`];
+  for (const track of TRACKS_VS) {
+    const gEntry = state.layers[`GMSI_VS_${track}.tif`];
+    const sEntry = state.layers[`GMSI_VS_shadow_layover_${track}.tif`];
     if (!gEntry) continue;
     if (token !== state.summaryToken) return; // another spot was clicked meanwhile
     const g = gEntry.leafletLayer ? await readRasterValue(gEntry.leafletLayer, latlng) : null;
     const sh = sEntry && sEntry.leafletLayer ? await readRasterValue(sEntry.leafletLayer, latlng) : null;
-    rows.push({ t, g, geometryBlocked: sh === 5 || sh === 17 || sh === 21 });
+    rows.push({ track, g, geometryBlocked: sh === 5 || sh === 17 || sh === 21 });
   }
   if (token !== state.summaryToken) return;
 
   container.textContent = "";
   const table = el("table", "track-table");
   const head = el("tr");
-  ["Track", "Richtung", "GMSI"].forEach((h) => head.appendChild(el("th", "", h)));
+  [t("summary.table.track"), t("summary.table.direction"), t("summary.table.gmsi")].forEach((h) => head.appendChild(el("th", "", h)));
   table.appendChild(head);
   let good = 0;
   for (const r of rows) {
     const tr = el("tr");
-    tr.appendChild(el("td", "", r.t));
-    tr.appendChild(el("td", "", TRACK_INFO[r.t].richtung));
+    tr.appendChild(el("td", "", r.track));
+    tr.appendChild(el("td", "", TRACK_INFO[r.track].richtung));
     const td = el("td");
     if (r.g !== null) {
       const dot = el("span", "dot");
@@ -409,7 +407,7 @@ async function buildTrackComparison(latlng, token, container) {
       td.append(dot, document.createTextNode(r.g.toFixed(2)));
       if (r.g >= 0.4) good++;
     } else {
-      td.textContent = r.geometryBlocked ? "Schatten/Layover" : "keine Daten";
+      td.textContent = r.geometryBlocked ? t("summary.shadowLayover") : t("summary.noData");
       td.className = "muted";
     }
     tr.appendChild(td);
@@ -418,9 +416,9 @@ async function buildTrackComparison(latlng, token, container) {
   container.appendChild(table);
 
   let msg;
-  if (good === 0) msg = "In keinem Track sind gute Werte (≥ 0.4) vorhanden.";
-  else if (good === 1) msg = "Nur in einem Track gut messbar – das ist anfälliger als Orte, die in mehreren Tracks gut messbar sind.";
-  else msg = `In ${good} von ${rows.length} Tracks gut messbar – die Messbarkeit ist robust.`;
+  if (good === 0) msg = t("summary.msg.none");
+  else if (good === 1) msg = t("summary.msg.one");
+  else msg = t("summary.msg.many", { good, total: rows.length });
   container.appendChild(el("p", "track-msg", msg));
   if (state.summaryPopup) state.summaryPopup.update(); // grow + re-pan into view
 }
@@ -429,7 +427,7 @@ async function showSiteSummary(latlng) {
   const token = (state.summaryToken = (state.summaryToken || 0) + 1);
   const popup = L.popup({ maxWidth: 300, className: "site-popup", autoPanPaddingTopLeft: [20, 70], autoPanPaddingBottomRight: [20, 20] })
     .setLatLng(latlng)
-    .setContent("Lade …")
+    .setContent(t("summary.loading"))
     .openOn(state.map);
   state.summaryPopup = popup;
   state.pin = latlng; // set after openOn: opening closes the previous popup, which clears the pin
@@ -456,15 +454,15 @@ async function showSiteSummary(latlng) {
   const track = ov !== null ? ORBIT_INDEX_ORDER[Math.round(ov)] : null;
   if (track && TRACK_INFO[track]) {
     const p = el("p", "best-track");
-    p.appendChild(el("strong", "", "Bester Track: "));
+    p.appendChild(el("strong", "", t("summary.bestTrack")));
     p.appendChild(document.createTextNode(`${track} (${TRACK_INFO[track].richtung})`));
     box.appendChild(p);
   }
 
   const compare = el("div", "track-compare");
-  const allLoaded = TRACKS_VS.every((t) =>
+  const allLoaded = TRACKS_VS.every((track) =>
     ["GMSI_VS_", "GMSI_VS_shadow_layover_"].every((pre) => {
-      const en = state.layers[`${pre}${t}.tif`];
+      const en = state.layers[`${pre}${track}.tif`];
       return !en || en.leafletLayer;
     })
   );
@@ -473,7 +471,7 @@ async function showSiteSummary(latlng) {
     if (allLoaded) {
       buildTrackComparison(latlng, token, compare);
     } else {
-      const btn = el("button", "track-compare-btn", "Alle Tracks vergleichen");
+      const btn = el("button", "track-compare-btn", t("summary.compareAllBtn"));
       btn.addEventListener("click", (ev) => {
         ev.stopPropagation(); // the button is removed from the DOM below; it must not reach the map as a click
         buildTrackComparison(latlng, token, compare);
@@ -488,18 +486,18 @@ async function showSiteSummary(latlng) {
   const fmt = (n) => Math.round(n).toLocaleString("de-CH");
   foot.textContent = `LV95 E ${fmt(x)} / N ${fmt(y)}`;
   heightPromise.then((h) => {
-    if (h !== null) foot.textContent += ` · ${h} m ü. M.`;
+    if (h !== null) foot.textContent += ` · ${h}${t("summary.elevation")}`;
     popup.update();
   });
-  box.appendChild(el("p", "site-note", "Basierend auf Sommerdaten 2018–2021. Bei Schneebedeckung sind zuverlässige Messungen in der Regel nicht möglich."));
+  box.appendChild(el("p", "site-note", t("summary.note")));
 
   popup.setContent(box);
 }
 
 function onMapClick(e) {
   // clicks inside an open popup (button, table) are not map clicks
-  const t = e.originalEvent && e.originalEvent.target;
-  if (t && t.closest && t.closest(".leaflet-popup")) return;
+  const target = e.originalEvent && e.originalEvent.target;
+  if (target && target.closest && target.closest(".leaflet-popup")) return;
   showSiteSummary(e.latlng);
 }
 
@@ -564,14 +562,12 @@ async function loadProject(fileList, options = {}) {
 
   if (foundCount === 0) {
     statusEl.className = "error";
-    statusEl.textContent =
-      "Keine passenden GMSI-Dateien im ausgewählten Ordner gefunden.\n" +
-      "Bitte den Ordner „GMSI_VS_product“ (oder „rasters“) auswählen.";
+    statusEl.textContent = t("load.noMatchingFiles");
     return;
   }
 
   statusEl.className = "";
-  statusEl.textContent = lazyFetch ? "Lade Übersicht …" : `Lade ${foundCount} von ${LAYER_MANIFEST.length} Ebenen …`;
+  statusEl.textContent = lazyFetch ? t("load.loadingOverview") : t("load.loadingN", { found: foundCount, total: LAYER_MANIFEST.length });
 
   state.map = L.map("map", { crs: CRS_LV95, zoomSnap: 1, zoomDelta: 1, zoomControl: true, attributionControl: true });
   new BasemapControl().addTo(state.map);
@@ -661,7 +657,7 @@ async function loadProject(fileList, options = {}) {
   state.map.on("click", onMapClick);
 
   if (!lazyFetch && missing.length) {
-    statusEl.textContent = `Geladen. Nicht gefunden (übersprungen): ${missing.join(", ")}`;
+    statusEl.textContent = t("load.loadedMissing", { missing: missing.join(", ") });
   }
 
   buildSidebar();
@@ -687,7 +683,7 @@ async function loadLazyLayer(file) {
   const entry = state.layers[file];
   if (!entry || entry.loading || entry.leafletLayer) return;
   entry.loading = true;
-  if (entry.statusEl) entry.statusEl.textContent = "lädt …";
+  if (entry.statusEl) entry.statusEl.textContent = t("load.layerLoading");
   try {
     const rasterFile = await entry.lazyFetch();
     const { layer } = await makeGeoTiffLayer(rasterFile, entry.manifest.kind);
@@ -699,7 +695,7 @@ async function loadLazyLayer(file) {
     console.error("Fehler beim Laden von", file, err);
     entry.checked = false;
     if (entry.checkboxEl) entry.checkboxEl.checked = false;
-    if (entry.statusEl) entry.statusEl.textContent = "Fehler beim Laden";
+    if (entry.statusEl) entry.statusEl.textContent = t("load.layerError");
   } finally {
     entry.loading = false;
     updateLegend();
@@ -743,10 +739,11 @@ function buildSidebar() {
 
     const title = document.createElement("div");
     title.className = "layer-group-title";
-    title.textContent = GROUP_LABELS[g];
+    title.textContent = groupLabel(g);
     groupDiv.appendChild(title);
 
     groups[g].forEach(({ file, manifest, checked }) => {
+      const displayLabel = manifest.labelKey ? t(manifest.labelKey) : manifest.label;
       const row = document.createElement("label");
       row.className = "layer-row";
 
@@ -761,7 +758,7 @@ function buildSidebar() {
       swatch.style.background = swatchColorFor(manifest);
 
       const label = document.createElement("span");
-      label.textContent = manifest.label;
+      label.textContent = displayLabel;
 
       row.appendChild(cb);
       row.appendChild(swatch);
@@ -789,12 +786,12 @@ function buildSidebar() {
       const opRow = document.createElement("div");
       opRow.className = "opacity-row";
       const opLabel = document.createElement("span");
-      opLabel.textContent = "Transparenz";
+      opLabel.textContent = t("sidebar.opacity");
       const slider = document.createElement("input");
       slider.type = "range";
       slider.min = "0"; slider.max = "100"; slider.step = "5";
       slider.value = String(Math.round((1 - defaultOpacity) * 100));
-      slider.setAttribute("aria-label", `Transparenz ${manifest.label}`);
+      slider.setAttribute("aria-label", t("sidebar.opacityAria", { label: displayLabel }));
       const opValue = document.createElement("span");
       opValue.className = "opacity-value";
       opValue.textContent = `${slider.value} %`;
@@ -837,22 +834,22 @@ function updateLegend() {
   if (visibleKinds.size === 0) return;
 
   const heading = document.createElement("h2");
-  heading.textContent = "Legende";
+  heading.textContent = t("legend.h");
   legend.appendChild(heading);
 
-  if (visibleKinds.has("gmsi")) legend.appendChild(legendBlock("GMSI", GMSI_LEGEND));
-  if (visibleKinds.has("orbit")) legend.appendChild(legendBlock("Track", bestOrbitLegend()));
-  if (visibleKinds.has("shadow")) legend.appendChild(legendBlock("Shadow/Layover", SHADOW_LEGEND));
+  if (visibleKinds.has("gmsi")) legend.appendChild(legendBlock(t("legend.gmsiTitle"), gmsiLegend()));
+  if (visibleKinds.has("orbit")) legend.appendChild(legendBlock(t("legend.trackTitle"), bestOrbitLegend()));
+  if (visibleKinds.has("shadow")) legend.appendChild(legendBlock(t("legend.shadowTitle"), shadowLegend()));
 }
 
 function legendBlock(title, items) {
   const block = document.createElement("div");
   block.className = "legend-block";
-  const t = document.createElement("div");
-  t.style.fontWeight = "600";
-  t.style.marginBottom = "4px";
-  t.textContent = title;
-  block.appendChild(t);
+  const titleEl = document.createElement("div");
+  titleEl.style.fontWeight = "600";
+  titleEl.style.marginBottom = "4px";
+  titleEl.textContent = title;
+  block.appendChild(titleEl);
   items.forEach(({ color, label }) => {
     const row = document.createElement("div");
     row.className = "legend-row";
@@ -968,6 +965,22 @@ document.addEventListener("click", (e) => {
 document.getElementById("mode-easy").addEventListener("click", () => setMode("easy"));
 document.getElementById("mode-expert").addEventListener("click", () => setMode("expert"));
 
+// called by i18n.js's setLang() after it has refreshed every static
+// [data-i18n*] element; this refreshes everything built dynamically from
+// JS strings instead (sidebar labels, legend, basemap-switcher tooltip
+// already handled via its own data-i18n* attributes). Any open site-summary
+// popup is closed rather than re-translated in place, since rebuilding it
+// would mean re-fetching raster values for no visual benefit.
+function onLangChange() {
+  if (!state.map) return; // language switched before data finished loading
+  if (state.summaryPopup) state.map.closePopup(state.summaryPopup);
+  buildSidebar();
+  // re-applies the Standard/Erweitert group visibility (buildSidebar()
+  // rebuilds .layer-group from scratch, so that state would otherwise be
+  // lost) and ends by calling updateLegend() itself
+  setMode(state.mode);
+}
+
 const infoModal = document.getElementById("info-modal");
 document.getElementById("info-btn").addEventListener("click", () => infoModal.classList.remove("hidden"));
 document.getElementById("info-modal-close").addEventListener("click", () => infoModal.classList.add("hidden"));
@@ -990,7 +1003,7 @@ dropzone.addEventListener("drop", async (e) => {
   dropzone.classList.remove("dragover");
   const statusEl = document.getElementById("load-status");
   statusEl.className = "";
-  statusEl.textContent = "Lese Ordner …";
+  statusEl.textContent = t("load.readingFolder");
   const files = await traverseDataTransferItems(e.dataTransfer.items);
   loadProject(files);
 });
@@ -1035,7 +1048,7 @@ async function tryAutoLoadOverHttp() {
     msg.classList.add("hidden");
     dropzone.classList.remove("hidden");
     statusEl.className = "error";
-    statusEl.textContent = "Automatisches Laden fehlgeschlagen. Bitte Ordner manuell auswählen.";
+    statusEl.textContent = t("load.autoFailed");
     return false;
   }
 

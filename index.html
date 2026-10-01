@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GMSI Wallis</title>
+<title data-i18n="app.title">GMSI Wallis</title>
 <link rel="icon" href="icon.png">
 <link rel="stylesheet" href="lib/leaflet.css">
 <link rel="stylesheet" href="style.css?v=20260924i">
@@ -12,14 +12,14 @@
 
 <div id="loader">
   <div id="loader-box">
-    <h1>GMSI Wallis</h1>
-    <p>Ground Motion Sensitivity Index – Kanton Wallis</p>
-    <p id="auto-loading-msg" class="hidden">Lade automatisch …</p>
+    <h1 data-i18n="app.title">GMSI Wallis</h1>
+    <p data-i18n="app.subtitle">Ground Motion Sensitivity Index – Kanton Wallis</p>
+    <p id="auto-loading-msg" class="hidden" data-i18n="loader.autoLoading">Lade automatisch …</p>
     <div id="dropzone">
-      <p><strong>Projektordner hierher ziehen</strong></p>
-      <p class="hint">(der Ordner „GMSI_VS_product“, oder mindestens der Unterordner „rasters“)</p>
-      <p class="hint">– oder –</p>
-      <button id="pick-folder-btn">Ordner auswählen</button>
+      <p><strong data-i18n="dropzone.title">Projektordner hierher ziehen</strong></p>
+      <p class="hint" data-i18n="dropzone.hint">(der Ordner „GMSI_VS_product“, oder mindestens der Unterordner „rasters“)</p>
+      <p class="hint" data-i18n="dropzone.or">– oder –</p>
+      <button id="pick-folder-btn" data-i18n="dropzone.pickButton">Ordner auswählen</button>
       <input type="file" id="pick-folder-input" webkitdirectory multiple style="display:none">
     </div>
     <div id="load-status"></div>
@@ -28,69 +28,65 @@
 
 <div id="app" class="hidden">
   <div id="sidebar">
-    <h1>GMSI Wallis</h1>
+    <h1 data-i18n="app.title">GMSI Wallis</h1>
+
+    <div id="lang-toggle" role="group" data-i18n-aria-label="lang.toggle" aria-label="Sprache wechseln">
+      <button class="lang-btn active" data-lang="de">DE</button>
+      <button class="lang-btn" data-lang="fr">FR</button>
+    </div>
 
     <div id="search-box">
-      <input type="text" id="search-input" placeholder="Ort suchen (z.B. Chur, Davos) …" autocomplete="off">
+      <input type="text" id="search-input" data-i18n-placeholder="search.placeholder" placeholder="Ort suchen (z. B. Sion, Zermatt) …" autocomplete="off">
       <div id="search-results" class="hidden"></div>
     </div>
 
     <div id="mode-toggle">
-      <button id="mode-easy" class="mode-btn active">Standard</button>
-      <button id="mode-expert" class="mode-btn">Erweitert</button>
+      <button id="mode-easy" class="mode-btn active" data-i18n="mode.standard">Standard</button>
+      <button id="mode-expert" class="mode-btn" data-i18n="mode.expert">Erweitert</button>
     </div>
 
-    <button id="info-btn">ℹ️ Was zeigt diese Karte – und was nicht?</button>
+    <button id="info-btn" data-i18n="info.button">ℹ️ Was zeigt diese Karte – und was nicht?</button>
 
     <div id="layer-tree"></div>
 
     <div id="legend"></div>
 
     <div id="info">
-      <p>&copy; WSL Institute for Snow and Avalanche Research, SLF 2026</p>
+      <p data-i18n="info.copyright">&copy; WSL Institute for Snow and Avalanche Research, SLF 2026</p>
     </div>
   </div>
   <div id="map"></div>
-  <button id="sidebar-toggle" title="Seitenleiste ein-/ausblenden" aria-label="Seitenleiste ein-/ausblenden" aria-expanded="true">
+  <button id="sidebar-toggle" data-i18n-title="sidebar.toggle" data-i18n-aria-label="sidebar.toggle" title="Seitenleiste ein-/ausblenden" aria-label="Seitenleiste ein-/ausblenden" aria-expanded="true">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
   </button>
 </div>
 
 <div id="info-modal" class="hidden">
   <div id="info-modal-box">
-    <button id="info-modal-close" title="Schliessen">✕</button>
+    <button id="info-modal-close" data-i18n-title="modal.close" title="Schliessen">✕</button>
 
-    <h2>Was zeigt diese Karte?</h2>
-    <p>
-      Der <strong>GMSI (Ground Motion Sensitivity Index)</strong> zeigt, wie gut sich ein Ort im
-      Kanton Wallis mit Satellitenradar (Sentinel&#8209;1) auf Bodenbewegungen überwachen lässt –
-      zum Beispiel für Rutschungen, Sackungen oder andere Hangbewegungen. Der Wert reicht von
-      0 (ungeeignet) bis 1 (sehr gut geeignet) und liegt für jeden 10×10&nbsp;Meter grossen
-      Bildpunkt vor.
-    </p>
+    <h2 data-i18n="modal.whatShows.h">Was zeigt diese Karte?</h2>
+    <p data-i18n-html="modal.whatShows.body"></p>
 
-    <h2>Wie ist die Karte zu lesen?</h2>
+    <h2 data-i18n="modal.howToRead.h">Wie ist die Karte zu lesen?</h2>
     <ul>
-      <li><span class="dot" style="background:#1A9641"></span><strong>Grün (GMSI ≥ 0.4):</strong> sehr gute Bedingungen – hier sind gute Radarmessungen wahrscheinlich.</li>
-      <li><span class="dot" style="background:#FDB863"></span><strong>Gelb (GMSI 0.2–0.4):</strong> Messungen sind möglich, Ergebnisse sollten aber mit Vorsicht interpretiert werden.</li>
-      <li><span class="dot" style="background:#D7191C"></span><strong>Rot (GMSI &lt; 0.2):</strong> schlechte Bedingungen – gute Messungen sind schwieriger zu erhalten, und Bewegungen können leicht übersehen werden oder sind schwer zu interpretieren. Ganz unmöglich sind Messungen aber nicht.</li>
-      <li><span class="dot" style="background:#ffffff;border:1px solid #bbb"></span><strong>Ohne Farbe:</strong> keine Daten. Das sind Gebiete im Radarschatten oder mit Layover-Verzerrung sowie Gebiete, in denen die Radarbilder schon nach 6&nbsp;Tagen nicht mehr zuverlässig vergleichbar sind.</li>
+      <li><span class="dot" style="background:#1A9641"></span><span data-i18n-html="modal.howToRead.green"></span></li>
+      <li><span class="dot" style="background:#FDB863"></span><span data-i18n-html="modal.howToRead.yellow"></span></li>
+      <li><span class="dot" style="background:#D7191C"></span><span data-i18n-html="modal.howToRead.red"></span></li>
+      <li><span class="dot" style="background:#ffffff;border:1px solid #bbb"></span><span data-i18n-html="modal.howToRead.none"></span></li>
     </ul>
 
-    <h2>Wichtig: Rot heisst nicht automatisch „keine Bewegung“</h2>
-    <p>
+    <h2 data-i18n="modal.redWarning.h">Wichtig: Rot heisst nicht automatisch „keine Bewegung“</h2>
+    <p data-i18n="modal.redWarning.intro">
       Ein tiefer GMSI-Wert kann ganz unterschiedliche Ursachen haben – und die Karte allein
       zeigt nicht, welche davon zutrifft:
     </p>
     <ol>
-      <li>Die Geometrie ist ungünstig, z.&nbsp;B. ein Steilhang, den der Satellit aus seiner
-        Blickrichtung nicht gut einsehen kann.</li>
-      <li>Die Erdoberfläche verändert sich rasch, sodass die Radarbilder schnell nicht mehr
-        vergleichbar sind – z.&nbsp;B. durch Vegetation oder Schnee, aber auch durch eine
-        Rutschung, die sich schnell bewegt.</li>
-      <li>Beides trifft gleichzeitig zu.</li>
+      <li data-i18n-html="modal.redWarning.li1"></li>
+      <li data-i18n-html="modal.redWarning.li2"></li>
+      <li data-i18n-html="modal.redWarning.li3"></li>
     </ol>
-    <p>
+    <p data-i18n="modal.redWarning.outro">
       Das heisst: Ein tiefer Wert an einer bekannten oder vermuteten Rutschung kann selbst ein
       Hinweis auf die Instabilität sein – nicht nur ein Zeichen für schlechte Messbedingungen.
       Ein tiefer Wert bedeutet ausserdem nicht, dass Radarmessungen unmöglich sind – es wird nur
@@ -98,33 +94,20 @@
       zuverlässig.
     </p>
 
-    <h2>Was die Karte nicht zeigt</h2>
+    <h2 data-i18n="modal.whatNot.h">Was die Karte nicht zeigt</h2>
     <ul>
-      <li>Die Karte beruht auf <strong>Sommerdaten aus den Jahren 2018–2021</strong> und zeigt damit
-        Bestfall-Bedingungen. Bei Schneebedeckung sind zuverlässige Messungen unabhängig vom
-        GMSI-Wert in der Regel nicht möglich.</li>
-      <li>Gebiete, die sich genau während 2018–2021 stark verändert haben, können in der Karte
-        tiefere Werte zeigen, auch wenn sich die Bedingungen seither wieder verbessert haben.</li>
+      <li data-i18n-html="modal.whatNot.li1"></li>
+      <li data-i18n-html="modal.whatNot.li2"></li>
     </ul>
 
-    <h2>Wie wurde die Karte erstellt? (kurz erklärt)</h2>
-    <p>
-      Grundlage sind Radaraufnahmen des Satelliten <strong>Sentinel&#8209;1</strong> (Teil des europäischen
-      Erdbeobachtungsprogramms Copernicus, betrieben mit der Weltraumorganisation ESA). Er überfliegt die Schweiz regelmässig und liefert
-      seine Radarbilder frei und öffentlich zugänglich. Der GMSI kombiniert daraus drei Faktoren
-      pro Bildpunkt:
-    </p>
+    <h2 data-i18n="modal.howMade.h">Wie wurde die Karte erstellt? (kurz erklärt)</h2>
+    <p data-i18n-html="modal.howMade.intro"></p>
     <ol>
-      <li><strong>Datenzuverlässigkeit:</strong> Wie ähnlich sieht die Erdoberfläche auf
-        Radarbildern über die Zeit hinweg aus? Verändert sie sich schnell (z.&nbsp;B. durch
-        Vegetation, Schnee oder Bodenbewegung), nimmt diese Ähnlichkeit rasch ab.</li>
-      <li><strong>Sichtbarkeit:</strong> Kann der Satellit den Ort überhaupt „sehen“, oder liegt er
-        im Radarschatten bzw. wird durch steiles Gelände verzerrt (Layover)?</li>
-      <li><strong>Messempfindlichkeit:</strong> Radar misst Bewegung nur in Blickrichtung des
-        Satelliten. Ein Hang, der sich seitlich zum Satelliten bewegt, ist schwerer zu erfassen
-        als einer, der sich direkt auf ihn zu oder von ihm weg bewegt.</li>
+      <li data-i18n-html="modal.howMade.li1"></li>
+      <li data-i18n-html="modal.howMade.li2"></li>
+      <li data-i18n-html="modal.howMade.li3"></li>
     </ol>
-    <p>
+    <p data-i18n="modal.howMade.outro">
       Da mehrere Satelliten-Bahnen (Tracks) die Schweiz aus unterschiedlichen Richtungen
       überfliegen, wird zusätzlich für jeden Bildpunkt festgehalten, welche Bahn dort die besten
       Ergebnisse liefert. Ascending- und Descending-Tracks blicken von gegenüberliegenden
@@ -132,22 +115,15 @@
       messbar ist, ist anfälliger als einer, der in mehreren Tracks gut messbar ist.
     </p>
 
-    <h2>Empfohlenes Vorgehen</h2>
+    <h2 data-i18n="modal.workflow.h">Empfohlenes Vorgehen</h2>
     <ol>
-      <li><strong>Übersicht:</strong> Mit der GMSI-Übersicht prüfen, ob ein Gebiet grundsätzlich
-        mit Radar überwacht werden kann.</li>
-      <li><strong>Track wählen:</strong> Mit „Bester Track pro Pixel“ herausfinden, welche
-        Satelliten-Bahn dort die besten Ergebnisse liefert.</li>
-      <li><strong>GMSI pro Track:</strong> Die Karte dieser Bahn ansehen und prüfen, ob die
-        Blickrichtung zur erwarteten Bewegungsrichtung des Hangs passt.</li>
-      <li><strong>Shadow/Layover pro Track:</strong> Bei Unklarheiten prüfen, ob der Ort für diese
-        Bahn im Radarschatten liegt oder durch Layover verzerrt ist.</li>
+      <li data-i18n-html="modal.workflow.li1"></li>
+      <li data-i18n-html="modal.workflow.li2"></li>
+      <li data-i18n-html="modal.workflow.li3"></li>
+      <li data-i18n-html="modal.workflow.li4"></li>
     </ol>
 
-    <p class="source">
-      Quelle: Jacquemart &amp; Manconi (2025). Datengrundlage: Kohärenzbilder des Satelliten
-      Sentinel&#8209;1 (ESA/Copernicus), Sommer 2018–2021; digitales Höhenmodell (Gelände).
-    </p>
+    <p class="source" data-i18n-html="modal.source"></p>
   </div>
 </div>
 
@@ -156,6 +132,7 @@
 <script src="lib/leaflet.js"></script>
 <script src="lib/proj4.js"></script>
 <script src="lib/geotiff.js"></script>
+<script src="i18n.js?v=20260924i"></script>
 <script src="layers.js?v=20260924i"></script>
 <script src="geotiff-layer.js?v=20260924i"></script>
 <script src="app.js?v=20260924i"></script>

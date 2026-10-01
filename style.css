@@ -100,6 +100,23 @@ html, body {
   color: var(--slf-blue);
 }
 
+#lang-toggle {
+  display: flex;
+  gap: 6px;
+  margin: -8px 0 14px;
+}
+.lang-btn {
+  border: 1px solid var(--slf-blue);
+  border-radius: 6px;
+  background: white;
+  color: var(--slf-blue);
+  padding: 2px 9px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.lang-btn.active { background: var(--slf-blue); color: white; }
+
 #mode-toggle {
   display: flex;
   border: 1px solid var(--slf-blue);
