@@ -1,0 +1,446 @@
+:root {
+  --slf-blue: #0072b2;
+  --border: #d8dbe0;
+  --bg: #f7f8f9;
+  --text: #1c1e21;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0; padding: 0; height: 100%;
+  font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--text);
+}
+
+.hidden { display: none !important; }
+
+/* ---------------- loader / drop screen ---------------- */
+
+#loader {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(160deg, #eef3f6, #dfe7ec);
+}
+
+#loader-box {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+  padding: 40px 48px;
+  max-width: 560px;
+  width: 90%;
+  text-align: center;
+}
+
+#loader-box h1 { margin: 0 0 4px; font-size: 26px; color: var(--slf-blue); }
+#loader-box > p { margin: 0 0 24px; color: #555; }
+
+#dropzone {
+  border: 2px dashed #9fb3c0;
+  border-radius: 10px;
+  padding: 32px 20px;
+  transition: background 0.15s, border-color 0.15s;
+}
+#dropzone.dragover {
+  background: #eaf4fb;
+  border-color: var(--slf-blue);
+}
+#dropzone p { margin: 6px 0; }
+#dropzone .hint { color: #888; font-size: 13px; }
+.hint { color: #888; font-size: 12px; margin: 4px 0 0; }
+
+#pick-folder-btn {
+  margin-top: 8px;
+  background: var(--slf-blue);
+  color: white;
+  border: none;
+  padding: 10px 22px;
+  border-radius: 6px;
+  font-size: 15px;
+  cursor: pointer;
+}
+#pick-folder-btn:hover { background: #005a8c; }
+
+#load-status {
+  margin-top: 18px;
+  font-size: 14px;
+  text-align: left;
+  white-space: pre-line;
+  color: #444;
+}
+#load-status.error { color: #c0392b; }
+
+/* ---------------- main app ---------------- */
+
+#app { display: flex; height: 100%; }
+/* keep #app laid out (so #map has real pixel dimensions and Leaflet's
+   fitBounds() computes correctly) while it's still "hidden" behind the
+   loader overlay; only its visibility toggles, not its layout */
+#app.hidden { visibility: hidden !important; display: flex !important; }
+
+#sidebar {
+  width: 320px;
+  min-width: 320px;
+  background: var(--bg);
+  border-right: 1px solid var(--border);
+  padding: 18px 18px 12px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+/* none of the sidebar sections should ever be squished by flexbox when the
+   layer list grows tall in Erweitert mode -- overflow should scroll, not
+   shrink the mode-toggle/search/info sections into unclickable slivers */
+#sidebar > * { flex-shrink: 0; }
+
+#sidebar h1 {
+  font-size: 19px;
+  margin: 0 0 14px;
+  color: var(--slf-blue);
+}
+
+#mode-toggle {
+  display: flex;
+  border: 1px solid var(--slf-blue);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.mode-btn {
+  flex: 1;
+  border: none;
+  background: white;
+  color: var(--slf-blue);
+  padding: 8px 0;
+  font-size: 14px;
+  cursor: pointer;
+}
+.mode-btn.active { background: var(--slf-blue); color: white; }
+
+#layer-tree { flex: 0 0 auto; }
+
+.layer-group { margin-bottom: 14px; }
+.layer-group-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: #444;
+  margin: 10px 0 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.layer-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 14px;
+}
+.layer-row input[type=radio], .layer-row input[type=checkbox] {
+  accent-color: var(--slf-blue);
+}
+.layer-row .swatch {
+  width: 12px; height: 12px; border-radius: 2px; flex: none;
+  border: 1px solid rgba(0,0,0,0.15);
+}
+
+#legend {
+  border-top: 1px solid var(--border);
+  margin-top: 12px;
+  padding-top: 12px;
+  font-size: 13px;
+}
+#legend h2 { font-size: 13px; margin: 0 0 8px; color: #444; text-transform: uppercase; letter-spacing: 0.02em;}
+.legend-block { margin-bottom: 10px; }
+.legend-row { display: flex; align-items: center; gap: 8px; margin: 3px 0; }
+.legend-row .swatch { width: 14px; height: 14px; border-radius: 2px; flex: none; border: 1px solid rgba(0,0,0,0.15); }
+
+#info {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: #777;
+}
+
+#map { flex: 1; }
+
+
+/* ---------------- on-map basemap control ---------------- */
+
+.basemap-control { position: relative; }
+/* extra specificity needed to beat leaflet.css's ".leaflet-bar a" rule,
+   which otherwise forces display:block + line-height, breaking centering */
+.basemap-control a.basemap-control-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px;
+  line-height: normal;
+  background: white;
+  text-decoration: none;
+  cursor: pointer;
+}
+.basemap-control a.basemap-control-btn:hover { background: #f2f2f2; }
+.basemap-control-btn svg { display: block; }
+.basemap-control-menu {
+  position: absolute;
+  bottom: 0;
+  left: 40px;
+  background: white;
+  border-radius: 4px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+  overflow: hidden;
+  min-width: 190px;
+}
+.basemap-control-item {
+  padding: 8px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  color: #1c1e21;
+}
+.basemap-control-item:hover { background: #f2f2f2; }
+.basemap-control-item.active { font-weight: 600; color: var(--slf-blue); }
+
+
+/* ---------------- info button + modal ---------------- */
+
+#info-btn {
+  margin-bottom: 16px;
+  width: 100%;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text);
+}
+#info-btn:hover { background: #eef3f6; border-color: var(--slf-blue); }
+
+#info-modal {
+  position: fixed; inset: 0; z-index: 999999;
+  background: rgba(20, 25, 30, 0.55);
+  overflow-y: auto;
+  padding: 40px 24px;
+}
+#info-modal-box {
+  position: relative;
+  background: #ffffff;
+  color: var(--text);
+  border-radius: 12px;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 32px 36px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+  z-index: 1;
+}
+#info-modal-close {
+  position: absolute;
+  top: 14px; right: 14px;
+  width: 30px; height: 30px;
+  border: none;
+  background: #eee;
+  border-radius: 50%;
+  font-size: 15px;
+  cursor: pointer;
+  color: #444;
+}
+#info-modal-close:hover { background: #ddd; }
+#info-modal-box h2 {
+  font-size: 15px;
+  color: var(--slf-blue);
+  margin: 22px 0 8px;
+}
+#info-modal-box h2:first-child { margin-top: 0; }
+#info-modal-box p, #info-modal-box li {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+}
+#info-modal-box ul, #info-modal-box ol {
+  margin: 6px 0;
+  padding-left: 22px;
+}
+#info-modal-box li { margin-bottom: 6px; }
+#info-modal-box .dot {
+  display: inline-block;
+  width: 10px; height: 10px;
+  border-radius: 2px;
+  margin-right: 4px;
+}
+#info-modal-box .source {
+  margin-top: 24px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: #888;
+}
+
+
+/* ---------------- logo links (top-right SLF, bottom-right DAM project) ---------------- */
+
+.map-logo-link {
+  display: block;
+  background: none !important;
+  border: none !important;
+  width: auto !important;
+  height: auto !important;
+  line-height: normal !important;
+}
+.map-logo {
+  display: block;
+  height: 52px;
+  width: auto;
+  filter: drop-shadow(0 1px 4px rgba(0,0,0,0.35));
+  transition: transform 0.15s;
+}
+.map-logo-link:hover .map-logo { transform: scale(1.06); }
+.dam-logo-link .map-logo { height: 56px; }
+
+
+/* ---------------- click-to-query popup ---------------- */
+
+.point-popup { font-size: 13px; line-height: 1.6; }
+.point-popup div { margin-bottom: 2px; }
+
+/* ---------------- location search ---------------- */
+
+#search-box { position: relative; margin-bottom: 14px; }
+#search-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px;
+}
+#search-input:focus { outline: none; border-color: var(--slf-blue); }
+#search-results {
+  position: absolute;
+  top: 100%; left: 0; right: 0;
+  background: white;
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 5;
+}
+.search-result {
+  padding: 7px 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.search-result:hover { background: #eef3f6; }
+
+
+/* "Bester Track" overlay uses Multiply so terrain texture from the
+   basemap still shows through the categorical track color */
+.gmsi-multiply-tile { mix-blend-mode: multiply; }
+
+/* download progress / error hint on lazily loaded layers */
+.layer-status { font-size: 12px; color: #888; margin-left: auto; }
+
+/* "PROTOTYPE" corner ribbon (top-right of the page); click-through.
+   The band is placed so the SLF logo (top-right map control) sits in the free
+   corner triangle above it, with the text centred on the visible band. */
+#prototype-ribbon {
+  position: fixed; top: 0; right: 0; width: 240px; height: 240px;
+  overflow: hidden; pointer-events: none; z-index: 900; /* below map controls, so the SLF logo stays on top */
+}
+#prototype-ribbon span {
+  position: absolute; top: 65px; right: -72px; width: 300px;
+  padding: 8px 0; transform: rotate(45deg);
+  background: #d9541e; color: #fff; text-align: center;
+  font: 700 18px/1 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  letter-spacing: 0.16em; text-indent: 0.16em; box-shadow: 0 2px 5px rgba(0,0,0,0.35);
+}
+
+
+/* ---------------- collapsible sidebar ---------------- */
+
+#app { position: relative; }
+#sidebar { transition: margin-left 0.25s ease; }
+body.sidebar-collapsed #sidebar { margin-left: -321px; }
+
+#sidebar-toggle {
+  position: absolute; z-index: 1003;
+  top: 90px; left: 330px;
+  width: 34px; height: 34px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: white; color: #333; cursor: pointer;
+  border: 2px solid rgba(0,0,0,0.2); border-radius: 4px;
+  transition: left 0.25s ease;
+}
+#sidebar-toggle:hover { background: #f2f2f2; }
+#sidebar-toggle svg { transition: transform 0.25s ease; }
+body.sidebar-collapsed #sidebar-toggle { left: 10px; }
+body.sidebar-collapsed #sidebar-toggle svg { transform: rotate(180deg); }
+
+/* phones / narrow windows: the sidebar floats over the full-screen map */
+@media (max-width: 700px) {
+  #sidebar {
+    position: absolute; top: 0; bottom: 0; left: 0; z-index: 1002; /* above Leaflet controls */
+    width: min(320px, 85vw); min-width: 0;
+    box-shadow: 4px 0 16px rgba(0,0,0,0.3);
+    transition: transform 0.25s ease;
+  }
+  body.sidebar-collapsed #sidebar { margin-left: 0; transform: translateX(-105%); box-shadow: none; }
+  #sidebar-toggle { left: calc(min(320px, 85vw) + 10px); }
+  body.sidebar-collapsed #sidebar-toggle { left: 10px; }
+  #prototype-ribbon { width: 150px; height: 150px; }
+  #prototype-ribbon span { top: 36px; right: -52px; width: 190px; font-size: 12px; padding: 5px 0; }
+}
+
+/* iOS Safari: the classic 100% height includes the area behind the browser
+   toolbars; dvh tracks the visible viewport. Also avoid the 300 ms tap delay. */
+@supports (height: 100dvh) {
+  html, body, #app { height: 100dvh; }
+}
+#sidebar-toggle { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+
+
+/* per-layer transparency slider, visible only for ticked layers */
+.opacity-row {
+  display: none; align-items: center; gap: 8px;
+  padding: 0 0 6px 26px; font-size: 12px; color: #666;
+}
+.layer-item:has(input[type=checkbox]:checked) .opacity-row { display: flex; }
+.opacity-row input[type=range] { flex: 1; min-width: 0; accent-color: var(--slf-blue); }
+.opacity-value { width: 34px; text-align: right; }
+
+
+/* ---------------- site summary popup ---------------- */
+.site-summary { font-size: 13px; line-height: 1.45; }
+.site-summary p { margin: 6px 0; }
+.site-summary .verdict {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  padding: 6px 10px; border-radius: 6px; color: #fff; font-size: 14px;
+}
+.verdict-good { background: #1A9641; }
+.verdict-mid { background: #d98a1f; }
+.verdict-bad { background: #D7191C; }
+.verdict-none { background: #777; }
+.verdict-value { font-size: 12px; opacity: 0.95; }
+.site-summary .track-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 4px; }
+.track-table th { text-align: left; color: #666; font-weight: 600; padding: 2px 4px; border-bottom: 1px solid var(--border); }
+.track-table td { padding: 2px 4px; }
+.track-table .muted { color: #888; }
+.track-table .dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; }
+.track-compare-btn {
+  width: 100%; padding: 6px 8px; font-size: 12px; cursor: pointer;
+  background: white; border: 1px solid var(--slf-blue); color: var(--slf-blue); border-radius: 6px;
+}
+.track-compare-btn:hover { background: #eef3f6; }
+.site-foot { color: #666; font-size: 11px; margin-bottom: 0; }
+.site-note { color: #888; font-size: 11px; margin-top: 2px; }
+
+/* on-map share button: sits above the basemap button, with a small toast */
+.share-control { margin-bottom: 6px !important; }
+.share-toast {
+  position: absolute; left: 40px; top: 50%; transform: translateY(-50%);
+  background: #1c1e21; color: #fff; font-size: 12px; padding: 5px 9px;
+  border-radius: 4px; white-space: nowrap; pointer-events: none;
+}
+.track-compare-btn { font-weight: 600; padding: 8px 10px !important; }
