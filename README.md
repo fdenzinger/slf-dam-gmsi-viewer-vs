@@ -10,4 +10,4 @@ Tracks: unlike canton Graubünden (A015, A088, A117, D066, D168), Valais is cove
 
 Data: GMSI © Jacquemart & Manconi (2025); Copernicus Sentinel-1 (ESA); basemaps © swisstopo.
 
-License: to be defined.
+License: All rights reserved (see `LICENSE`) — prototype, not yet open source.
