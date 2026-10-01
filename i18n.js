@@ -1,8 +1,8 @@
-// Minimal i18n: a flat {de, fr} string dictionary, a t(key, vars) lookup
+// Minimal i18n: a flat {de, fr, en} string dictionary, a t(key, vars) lookup
 // with {placeholder} substitution, and applyStaticTranslations() which
 // fills every [data-i18n]/[data-i18n-html]/[data-i18n-title]/
 // [data-i18n-placeholder]/[data-i18n-aria-label] element from it. German is
-// the fallback if a key is ever missing in French.
+// the fallback if a key is ever missing in another language.
 // Loaded first (before layers.js/app.js) so t() is available wherever
 // labels are built.
 
@@ -264,6 +264,133 @@ const I18N = {
     "group.2": "2 – Choisir la trajectoire",
     "group.3": "3 – GMSI par trajectoire",
     "group.4": "4 – Ombre/Layover par trajectoire",
+  },
+
+  en: {
+    "app.title": "GMSI Valais",
+    "app.subtitle": "Ground Motion Sensitivity Index – canton of Valais",
+    "loader.autoLoading": "Loading automatically …",
+    "dropzone.title": "Drag the project folder here",
+    "dropzone.hint": "(the „GMSI_VS_product“ folder, or at least the „rasters“ subfolder)",
+    "dropzone.or": "– or –",
+    "dropzone.pickButton": "Choose folder",
+    "search.placeholder": "Search for a place (e.g. Sion, Zermatt) …",
+    "mode.standard": "Standard",
+    "mode.expert": "Advanced",
+    "info.button": "ℹ️ What does this map show – and what doesn't it show?",
+    "info.copyright": "© WSL Institute for Snow and Avalanche Research, SLF 2026",
+    "sidebar.toggle": "Show/hide sidebar",
+    "lang.toggle": "Switch language",
+
+    "modal.close": "Close",
+    "modal.whatShows.h": "What does this map show?",
+    "modal.whatShows.body":
+      "The <strong>GMSI (Ground Motion Sensitivity Index)</strong> shows how well a location in " +
+      "the canton of Valais can be monitored for ground motion using satellite radar (Sentinel&#8209;1) – " +
+      "for example for landslides, subsidence or other slope movements. The value ranges from " +
+      "0 (unsuitable) to 1 (very well suited) and is given for every 10×10&nbsp;metre " +
+      "pixel.",
+    "modal.howToRead.h": "How to read the map",
+    "modal.howToRead.green": "<strong>Green (GMSI ≥ 0.4):</strong> very good conditions – good radar measurements are likely here.",
+    "modal.howToRead.yellow": "<strong>Yellow (GMSI 0.2–0.4):</strong> measurements are possible, but results should be interpreted with caution.",
+    "modal.howToRead.red": "<strong>Red (GMSI &lt; 0.2):</strong> poor conditions – good measurements are harder to obtain, and movements can be easily missed or difficult to interpret. Measurements are not entirely impossible, though.",
+    "modal.howToRead.none": "<strong>No colour:</strong> no data. These are areas in radar shadow or with layover distortion, as well as areas where the radar images are no longer reliably comparable after just 6&nbsp;days.",
+    "modal.redWarning.h": "Important: red doesn't automatically mean “no movement”",
+    "modal.redWarning.intro": "A low GMSI value can have very different causes – and the map alone doesn't show which one applies:",
+    "modal.redWarning.li1": "The geometry is unfavourable, e.&nbsp;g. a steep slope that the satellite cannot see well from its viewing angle.",
+    "modal.redWarning.li2": "The ground surface changes quickly, so the radar images stop being comparable soon – e.&nbsp;g. due to vegetation or snow, but also due to a landslide that is moving fast.",
+    "modal.redWarning.li3": "Both apply at the same time.",
+    "modal.redWarning.outro":
+      "In other words: a low value at a known or suspected landslide can itself be a sign of " +
+      "instability – not just a sign of poor measurement conditions. A low value also doesn't mean " +
+      "that radar measurements are impossible – it just becomes harder to obtain several good radar " +
+      "image pairs, and the movement values are less reliable.",
+    "modal.whatNot.h": "What the map doesn't show",
+    "modal.whatNot.li1": "The map is based on <strong>summer data from 2018–2021</strong> and therefore shows best-case conditions. With snow cover, reliable measurements are generally not possible regardless of the GMSI value.",
+    "modal.whatNot.li2": "Areas that changed a lot specifically during 2018–2021 may show lower values on the map, even if conditions have since improved again.",
+    "modal.howMade.h": "How was the map created? (brief explanation)",
+    "modal.howMade.intro":
+      "The basis is radar imagery from the <strong>Sentinel&#8209;1</strong> satellite (part of the European " +
+      "Copernicus Earth observation programme, operated with the ESA space agency). It flies over Switzerland regularly and makes " +
+      "its radar images freely and publicly available. The GMSI combines three factors " +
+      "per pixel:",
+    "modal.howMade.li1": "<strong>Data reliability:</strong> how similar does the ground surface look on radar images over time? If it changes quickly (e.&nbsp;g. due to vegetation, snow or ground motion), this similarity drops fast.",
+    "modal.howMade.li2": "<strong>Visibility:</strong> can the satellite even “see” the location, or is it in radar shadow or distorted by steep terrain (layover)?",
+    "modal.howMade.li3": "<strong>Measurement sensitivity:</strong> radar only measures motion in the satellite's line of sight. A slope that moves sideways relative to the satellite is harder to detect than one that moves directly towards or away from it.",
+    "modal.howMade.outro":
+      "Since several satellite orbits (tracks) fly over Switzerland from different directions, " +
+      "the map also records, for every pixel, which track gives the best results there. " +
+      "Ascending and descending tracks look at a slope from opposite sides and complement each " +
+      "other. A location that is only well measurable on a single track is more vulnerable than " +
+      "one that is well measurable on several tracks.",
+    "modal.workflow.h": "Recommended workflow",
+    "modal.workflow.li1": "<strong>Overview:</strong> use the GMSI overview to check whether an area can in principle be monitored with radar.",
+    "modal.workflow.li2": "<strong>Choose a track:</strong> use “Best track per pixel” to find out which satellite track gives the best results there.",
+    "modal.workflow.li3": "<strong>GMSI per track:</strong> look at that track's map and check whether its viewing direction matches the slope's expected direction of movement.",
+    "modal.workflow.li4": "<strong>Shadow/Layover per track:</strong> if anything is unclear, check whether the location is in radar shadow or distorted by layover for that track.",
+    "modal.source":
+      "Source: Jacquemart &amp; Manconi (2025). Underlying data: coherence images from the " +
+      "Sentinel&#8209;1 satellite (ESA/Copernicus), summer 2018–2021; digital terrain model.",
+
+    "basemap.switch": "Switch basemap",
+    "basemap.grau": "National map (grey)",
+    "basemap.swissimage": "SWISSIMAGE",
+    "basemap.alti3d": "Relief swissALTI3D (terrain)",
+    "basemap.surface3d": "Relief swissSURFACE3D (surface)",
+    "share.copyLink": "Copy link to this view",
+    "share.promptTitle": "Link to this view:",
+    "share.copied": "Link copied",
+
+    "verdict.none.title": "No data",
+    "verdict.none.text": "No values are available at this location: either outside Valais or not evaluable on any track (radar shadow, layover, or too little coherence).",
+    "verdict.good.title": "Well suited",
+    "verdict.good.text": "Good radar measurements with Sentinel‑1 are likely here.",
+    "verdict.mid.title": "Suited with caveats",
+    "verdict.mid.text": "Measurements are possible, but results should be interpreted with caution.",
+    "verdict.bad.title": "Difficult",
+    "verdict.bad.text": "Good measurements are hard to obtain here. A low value can be due to the geometry or to a rapidly changing surface (e.g. vegetation, snow or a landslide).",
+
+    "summary.loadingAllTracks": "Loading all tracks …",
+    "summary.table.track": "Track",
+    "summary.table.direction": "Direction",
+    "summary.table.gmsi": "GMSI",
+    "summary.shadowLayover": "Shadow/Layover",
+    "summary.noData": "no data",
+    "summary.msg.none": "No track has good values (≥ 0.4).",
+    "summary.msg.one": "Only well measurable on a single track – that's more vulnerable than locations measurable on several tracks.",
+    "summary.msg.many": "Well measurable on {good} of {total} tracks – measurability is robust.",
+    "summary.loading": "Loading …",
+    "summary.bestTrack": "Best track: ",
+    "summary.compareAllBtn": "Compare all tracks",
+    "summary.elevation": " m a.s.l.",
+    "summary.note": "Based on summer data 2018–2021. With snow cover, reliable measurements are generally not possible.",
+
+    "load.noMatchingFiles": "No matching GMSI files found in the selected folder.\nPlease select the „GMSI_VS_product“ folder (or „rasters“).",
+    "load.loadingOverview": "Loading overview …",
+    "load.loadingN": "Loading {found} of {total} layers …",
+    "load.loadedMissing": "Loaded. Not found (skipped): {missing}",
+    "load.layerLoading": "loading …",
+    "load.layerError": "Error loading",
+    "load.readingFolder": "Reading folder …",
+    "load.autoFailed": "Automatic loading failed. Please select a folder manually.",
+
+    "sidebar.opacity": "Opacity",
+    "sidebar.opacityAria": "Opacity {label}",
+    "legend.h": "Legend",
+    "legend.gmsiTitle": "GMSI",
+    "legend.trackTitle": "Track",
+    "legend.shadowTitle": "Shadow/Layover",
+    "legend.gmsi.green": "GMSI ≥ 0.4 – very good conditions",
+    "legend.gmsi.yellow": "GMSI 0.2 – 0.4 – measurements possible, but with caution",
+    "legend.gmsi.red": "GMSI < 0.2 – poor conditions",
+    "legend.shadow": "No measurement possible (radar shadow / layover)",
+
+    "layer.composite": "GMSI overview (best value across all tracks)",
+    "layer.bestOrbit": "Best track per pixel",
+    "group.1": "1 – Overview",
+    "group.2": "2 – Choose track",
+    "group.3": "3 – GMSI per track",
+    "group.4": "4 – Shadow/Layover per track",
   },
 };
 
