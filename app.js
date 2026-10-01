@@ -1004,12 +1004,8 @@ dropzone.addEventListener("drop", async (e) => {
 // the manual picker/drag-drop above is used instead.
 // GitHub Pages deployment: the raster data lives on Zenodo (files this
 // large can't go through git/GitHub Pages directly -- see PUBLISHING.txt),
-// while the app itself is this static site. Fill in the record ID after
-// publishing the Zenodo upload.
-// TODO: not yet published -- fill in once the data/ folder is uploaded
-// (Zenodo or Envidat; if Envidat, RASTER_BASE_URL/remoteSource below need
-// to point at its file-streaming endpoint instead of Zenodo's).
-const ZENODO_RECORD_ID = "";
+// while the app itself is this static site.
+const ZENODO_RECORD_ID = "23084804";
 const RASTER_BASE_URL = `https://zenodo.org/api/records/${ZENODO_RECORD_ID}/files/`;
 
 // The COGs are streamed with HTTP range requests, so "loading" a layer only
