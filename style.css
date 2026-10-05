@@ -370,8 +370,14 @@ html, body {
   position: fixed; top: 0; right: 0; width: 240px; height: 240px;
   overflow: hidden; pointer-events: none; z-index: 900; /* below map controls, so the SLF logo stays on top */
 }
+/* translucent corner triangle behind the SLF logo and the ribbon: lifts both off the map colours */
+#prototype-ribbon::before {
+  content: ""; position: absolute; inset: 0;
+  background: var(--corner-shade, rgba(255, 255, 255, 0.72));
+  clip-path: polygon(58px 0, 100% 0, 100% calc(100% - 58px));
+}
 #prototype-ribbon span {
-  position: absolute; top: 65px; right: -72px; width: 300px;
+  position: absolute; top: 60px; right: -77px; width: 300px;
   padding: 8px 0; transform: rotate(45deg);
   background: #d9541e; color: #fff; text-align: center;
   font: 700 18px/1 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -411,7 +417,9 @@ body.sidebar-collapsed #sidebar-toggle svg { transform: rotate(180deg); }
   #sidebar-toggle { left: calc(min(320px, 85vw) + 10px); }
   body.sidebar-collapsed #sidebar-toggle { left: 10px; }
   #prototype-ribbon { width: 150px; height: 150px; }
-  #prototype-ribbon span { top: 36px; right: -52px; width: 190px; font-size: 12px; padding: 5px 0; }
+  /* the band sits a little further from the corner than on desktop so the 52 px logo stays clear of it */
+  #prototype-ribbon span { top: 62px; right: -26px; width: 190px; font-size: 12px; padding: 5px 0; }
+  #prototype-ribbon::before { clip-path: polygon(-18px 0, 100% 0, 100% calc(100% + 18px)); }
 }
 
 /* iOS Safari: the classic 100% height includes the area behind the browser
@@ -512,3 +520,85 @@ body.sidebar-collapsed #sidebar-toggle svg { transform: rotate(180deg); }
 .measure-x:hover { color: #000; }
 .area-control a.measure-control-btn.active { background: #dbeaf5; }
 .leaflet-control-scale-line { font-size: 11px; }
+
+/* ---------------- guided tour ---------------- */
+
+#tour-btn {
+  margin-bottom: 16px;
+  width: 100%;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text);
+}
+#tour-btn:hover { background: #eef3f6; border-color: var(--slf-blue); }
+#info-btn { margin-bottom: 8px; }
+
+/* the three tour layers exist only while the tour runs; otherwise the huge
+   box-shadow of the spotlight would keep dimming (and blocking) the page */
+#tour-block, #tour-spot, #tour-pop { display: none; }
+body.tour-active #tour-block, body.tour-active #tour-spot, body.tour-active #tour-pop { display: block; }
+#tour-block { position: fixed; inset: 0; z-index: 200000; background: transparent; }
+#tour-spot {
+  position: fixed; z-index: 200001; pointer-events: none;
+  border-radius: 8px;
+  /* the dimming is this shadow. Its outer corners are rounded with a radius of about the
+     spread, so the spread must be far larger than the screen or the screen corners stay
+     undimmed (a bright circle segment in the corner) */
+  box-shadow: 0 0 0 400vmax rgba(15, 23, 32, 0.6), 0 0 0 3px #fff inset;
+  transition: left 0.25s ease, top 0.25s ease, width 0.25s ease, height 0.25s ease;
+}
+#tour-pop {
+  position: fixed; z-index: 200002; width: min(340px, calc(100vw - 20px));
+  background: #fff; color: var(--text); border-radius: 10px; padding: 12px 14px 12px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.35); font-size: 13.5px; line-height: 1.45;
+}
+#tour-pop h3 { margin: 2px 0 6px; font-size: 15px; }
+#tour-pop p { margin: 0 0 12px; }
+.tour-head { display: flex; justify-content: space-between; align-items: center; }
+.tour-count { font-size: 11px; color: #777; }
+.tour-close { border: none; background: none; cursor: pointer; font-size: 15px; color: #666; padding: 0 2px; }
+.tour-close:hover { color: #000; }
+.tour-nav { display: flex; justify-content: space-between; gap: 8px; }
+.tour-btn {
+  border: 1px solid var(--border); background: #fff; color: var(--text); border-radius: 6px;
+  padding: 6px 12px; font-size: 13px; cursor: pointer;
+}
+.tour-btn:hover:not(:disabled) { background: #eef3f6; border-color: var(--slf-blue); }
+.tour-btn:disabled { opacity: 0.4; cursor: default; }
+.tour-btn.tour-primary { background: var(--slf-blue); border-color: var(--slf-blue); color: #fff; }
+.tour-btn.tour-primary:hover:not(:disabled) { background: #005b96; }
+#tour-offer {
+  position: absolute; z-index: 950; left: 50%; top: 14px; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center;
+  background: #fff; border-radius: 10px; padding: 10px 14px; font-size: 13px;
+  box-shadow: 0 3px 14px rgba(0,0,0,0.3); max-width: min(560px, calc(100% - 90px));
+}
+
+/* demo cursor + click ripple used by the live demos */
+#tour-cursor {
+  position: fixed; left: -6px; top: -4px; z-index: 200003; pointer-events: none; opacity: 0;
+  transition: transform 0.8s cubic-bezier(.4,.1,.2,1), opacity 0.2s;
+}
+#tour-cursor.show { opacity: 1; }
+#tour-cursor svg { display: block; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5)); }
+#tour-cursor .tour-ripple {
+  position: absolute; left: 4px; top: 4px; width: 0; height: 0; border-radius: 50%;
+  border: 3px solid #fff; box-shadow: 0 0 0 2px rgba(0,0,0,0.5); opacity: 0; transform: translate(-50%, -50%);
+}
+#tour-cursor.click .tour-ripple { animation: tour-ripple 0.45s ease-out; }
+@keyframes tour-ripple { from { width: 6px; height: 6px; opacity: 1; } to { width: 46px; height: 46px; opacity: 0; } }
+#tour-spot.light { box-shadow: 0 0 0 400vmax rgba(15, 23, 32, 0.2), 0 0 0 3px #fff inset; }
+.tour-demo-note { color: #666; font-size: 12px; }
+body:not(.tour-active) #tour-cursor { display: none; }
+@media (prefers-reduced-motion: reduce) { #tour-cursor { transition: none; } }
+
+/* polygon-shaped highlight used while the area demo draws */
+#tour-shape { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 200001; pointer-events: none; display: none; }
+body:not(.tour-active) #tour-shape { display: none !important; }
+#tour-shape .dim { fill: rgba(15, 23, 32, 0.45); }
+#tour-shape .edge { stroke: #fff; stroke-width: 3; stroke-linejoin: round; }

@@ -469,7 +469,7 @@ async function showSiteSummary(latlng) {
   );
   {
     // always offered: even where the composite has no value, the per-track table shows why (e.g. radar shadow)
-    if (allLoaded) {
+    if (allLoaded && !state.tourDemo) { // the tour demo always shows the button first
       buildTrackComparison(latlng, token, compare);
     } else {
       const btn = el("button", "track-compare-btn", t("summary.compareAllBtn"));
@@ -979,6 +979,7 @@ function onLangChange() {
   if (!state.map) return; // language switched before data finished loading
   if (state.summaryPopup) state.map.closePopup(state.summaryPopup);
   refreshAreaTexts();
+  if (typeof refreshTourTexts === "function") refreshTourTexts();
   buildSidebar();
   // re-applies the Standard/Erweitert group visibility (buildSidebar()
   // rebuilds .layer-group from scratch, so that state would otherwise be
