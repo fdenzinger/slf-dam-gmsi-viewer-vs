@@ -47,8 +47,8 @@
   // ---- live demos for the "point" and "area" steps: the tour does what the visitor would do
 
   const DEMOS = {
-    GR: { place: "Piz Buin Pitschen", measure: [[2803920, 1191369], [2804774, 1190666], [2805491, 1190153]], point: [2803925, 1191324], polygon: [[2803149, 1190821], [2803462, 1191261], [2804436, 1191604], [2804506, 1191946], [2804912, 1192036], [2805949, 1192011], [2806266, 1190576], [2806049, 1190004], [2805682, 1189738], [2804944, 1190211], [2804012, 1189928], [2803174, 1190141]] }, // Piz Buin Pitschen / Piz Mon, over Cronsel, down to the Chamonna Tuoi
-    VS: { place: "Breithorn", pick: "St. Niklaus", point: [2630505, 1110165], polygon: [[2629150, 1110300], [2630050, 1110550], [2630900, 1110250], [2630950, 1109450], [2630450, 1109000], [2629250, 1109000], [2629000, 1109700]] }, // Breithorn / Längenschnee above St. Niklaus
+    GR: { place: "Piz Buin Pitschen", track: "A015", measure: [[2803920, 1191369], [2804774, 1190666], [2805491, 1190153]], point: [2803925, 1191324], polygon: [[2803149, 1190821], [2803462, 1191261], [2804436, 1191604], [2804506, 1191946], [2804912, 1192036], [2805949, 1192011], [2806266, 1190576], [2806049, 1190004], [2805682, 1189738], [2804944, 1190211], [2804012, 1189928], [2803174, 1190141]] }, // Piz Buin Pitschen / Piz Mon, over Cronsel, down to the Chamonna Tuoi
+    VS: { place: "Breithorn", pick: "St. Niklaus", track: "D066", measure: [[2629010, 1109793], [2629686, 1109943], [2630236, 1110278]], point: [2629183, 1109918], polygon: [[2628816, 1110218], [2629070, 1110416], [2629546, 1110528], [2630128, 1110480], [2630446, 1109930], [2630216, 1109260], [2630026, 1108880], [2629133, 1108790], [2628916, 1108856], [2628840, 1109710]] }, // Breithorn / Längenschnee above St. Niklaus
   };
   // switch a layer with its real checkbox; the first change of each layer is remembered so the tour can put it back
   function tickLayer(file, on) {
@@ -271,6 +271,7 @@
   function clearDemo(keepPopup, keepLayers) {
     tour.demoToken++;
     hideCursor();
+    if (tour.els) tour.els.spot.classList.remove("snap");
     setShape(null);
     setLineShape(null);
     if (keepPopup) return;
@@ -326,6 +327,25 @@
     const alive = () => tour.active && token === tour.demoToken;
     const cfg = demoCfg(), cursor = ensureCursor(), quick = reduced();
     tour.demoActive = true;
+    // layer demos: switching layers on/off makes rows appear and disappear (opacity sliders), so the rows move.
+    // The highlight follows the real row position all the time, without easing, instead of a position taken once.
+    const followsRows = ["layer", "tracks", "shadow", "toggle"].includes(kind);
+    if (tour.els) tour.els.spot.classList.toggle("snap", followsRows);
+    if (followsRows) {
+      // a ResizeObserver reacts in the same frame in which the list changes height (before it is painted),
+      // the timer is only the safety net for anything it does not see (e.g. the sidebar scrolling)
+      let ro = null;
+      const tree = document.getElementById("layer-tree");
+      if (tree && typeof ResizeObserver !== "undefined") {
+        ro = new ResizeObserver(() => { if (alive()) reposition(); });
+        ro.observe(tree);
+        document.querySelectorAll(".layer-item").forEach((el) => ro.observe(el));
+      }
+      (async () => {
+        while (alive()) { reposition(); await sleep(60); }
+        if (ro) ro.disconnect();
+      })();
+    }
     state.tourDemo = true; // app.js: always offer the "compare all tracks" button, even if the tracks are already loaded
     const setPhase = (ph) => {
       tour.demoPhase = ph;
@@ -558,7 +578,7 @@
       await sleep(quick ? 0 : 300);
     } else if (kind === "layer" || kind === "tracks" || kind === "shadow") {
       // the demos below click the real checkboxes, in this order; layers that already are in the wanted state are left alone
-      const comp = manifestFileOf("_composite.tif"), gmsiA = trackFile("gmsi", "A015"), shadowA = trackFile("shadow", "A015");
+      const comp = manifestFileOf("_composite.tif"), gmsiA = trackFile("gmsi", cfg.track), shadowA = trackFile("shadow", cfg.track); // one track that has data in the demo area
       const plan = kind === "layer" ? [[comp, false], [manifestFileOf("_best_orbit.tif"), true]]
         : kind === "tracks" ? [[comp, false], [gmsiA, true]]
         : [[comp, false], [gmsiA, false], [shadowA, true]]; // the track's GMSI goes off, so the grey of the shadow layer stands out

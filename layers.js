@@ -127,7 +127,7 @@ function colorFnForKind(kind) {
   }
 }
 
-// default layer opacity: GMSI classes and the best-track overlay start at 75 %
+// default layer opacity: GMSI classes, the best-track overlay and the shadow/layover layers start at 75 %
 function defaultOpacityForKind(kind) {
-  return kind === "gmsi" || kind === "orbit" ? 0.75 : 1;
+  return kind === "gmsi" || kind === "orbit" || kind === "shadow" ? 0.75 : 1;
 }
