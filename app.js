@@ -499,6 +499,7 @@ function onMapClick(e) {
   // clicks inside an open popup (button, table) are not map clicks
   const target = e.originalEvent && e.originalEvent.target;
   if (target && target.closest && target.closest(".leaflet-popup")) return;
+  if (onAreaMapClick(e) || onMeasureMapClick(e)) return; // area drawing in progress: the click is a vertex, not a site query
   showSiteSummary(e.latlng);
 }
 
@@ -571,8 +572,10 @@ async function loadProject(fileList, options = {}) {
   statusEl.textContent = lazyFetch ? t("load.loadingOverview") : t("load.loadingN", { found: foundCount, total: LAYER_MANIFEST.length });
 
   state.map = L.map("map", { crs: CRS_LV95, zoomSnap: 1, zoomDelta: 1, zoomControl: true, attributionControl: true });
+  L.control.scale({ position: "bottomleft", imperial: false, maxWidth: 140 }).addTo(state.map); // first, so it sits at the very bottom
   new BasemapControl().addTo(state.map);
   new ShareControl().addTo(state.map); // added second, so it stacks above the basemap button
+  initAreaStats(); // draw / load a polygon for the area assessment (area-stats.js), stacks above the share button
 
   // small logo-link control factory: an image wrapped in a link that opens
   // in a new tab, used for both the SLF logo (top-right) and the DAM
@@ -975,6 +978,7 @@ document.getElementById("mode-expert").addEventListener("click", () => setMode("
 function onLangChange() {
   if (!state.map) return; // language switched before data finished loading
   if (state.summaryPopup) state.map.closePopup(state.summaryPopup);
+  refreshAreaTexts();
   buildSidebar();
   // re-applies the Standard/Erweitert group visibility (buildSidebar()
   // rebuilds .layer-group from scratch, so that state would otherwise be

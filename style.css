@@ -466,3 +466,49 @@ body.sidebar-collapsed #sidebar-toggle svg { transform: rotate(180deg); }
   border-radius: 4px; white-space: nowrap; pointer-events: none;
 }
 .track-compare-btn { font-weight: 600; padding: 8px 10px !important; }
+
+/* ---------------- area statistics ---------------- */
+
+.area-control { margin-bottom: 6px !important; }
+.area-control a.basemap-control-btn + a.basemap-control-btn { border-top: 1px solid #ccc; }
+.area-control a.area-control-btn.active { background: #dbeaf5; }
+.leaflet-container.area-drawing { cursor: crosshair; }
+#area-hint {
+  position: absolute; left: 50%; top: 12px; transform: translateX(-50%); z-index: 900;
+  background: #1c1e21; color: #fff; font-size: 13px; padding: 7px 12px; border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3); max-width: min(520px, calc(100% - 140px)); text-align: center;
+  pointer-events: none;
+}
+#area-panel {
+  position: absolute; left: 56px; bottom: 36px; z-index: 850;
+  width: 310px; max-width: calc(100% - 140px); max-height: calc(100% - 110px); overflow-y: auto;
+  background: #fff; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+  padding: 10px 12px 12px; font-size: 13px; color: #1c1e21;
+}
+.area-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.area-close { border: none; background: none; font-size: 15px; cursor: pointer; color: #666; padding: 2px 4px; }
+.area-close:hover { color: #000; }
+.area-sub { margin: 6px 0 4px; color: #555; font-size: 12px; }
+.area-hint { color: #666; margin: 6px 0; }
+.area-bar { display: flex; height: 14px; border-radius: 4px; overflow: hidden; background: #eee; margin: 6px 0 8px; }
+.area-bar span { display: block; height: 100%; }
+.area-table { border-collapse: collapse; width: 100%; }
+.area-table td { padding: 2px 4px 2px 0; vertical-align: middle; }
+.area-table td.num { text-align: right; white-space: nowrap; padding-left: 6px; }
+.area-table td.muted { color: #888; font-size: 12px; }
+.area-table .dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
+.area-summary { margin: 8px 0 4px; line-height: 1.4; }
+.area-tracks { display: grid; gap: 3px; }
+.area-track-row { display: grid; grid-template-columns: 110px 1fr 40px; gap: 6px; align-items: center; font-size: 12px; }
+.area-track-bar { display: block; height: 8px; background: #eee; border-radius: 4px; overflow: hidden; }
+.area-track-bar span { display: block; height: 100%; }
+.area-track-val { text-align: right; color: #555; }
+.area-note { margin: 8px 0 0; color: #888; font-size: 11px; line-height: 1.35; }
+
+.measure-label.leaflet-tooltip { background: #fff; border: 1px solid #111; color: #111; font-size: 11px; padding: 1px 5px; box-shadow: none; }
+.measure-label.leaflet-tooltip:before { display: none; }
+.measure-label-total.leaflet-tooltip { font-size: 12px; padding: 2px 6px; }
+.measure-x { margin-left: 8px; color: #111; text-decoration: none; cursor: pointer; }
+.measure-x:hover { color: #000; }
+.area-control a.measure-control-btn.active { background: #dbeaf5; }
+.leaflet-control-scale-line { font-size: 11px; }
