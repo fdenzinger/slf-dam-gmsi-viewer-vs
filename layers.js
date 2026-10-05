@@ -39,6 +39,8 @@ const GMSI_ORANGE = [253, 184, 99, 255]; // #FDB863
 const GMSI_GREEN = [26, 150, 65, 255];   // #1A9641
 function gmsiColor(v, nodata) {
   if (v === nodata || v === null || v === undefined || Number.isNaN(v)) return TRANSPARENT;
+  // composite flag: layover/shadow in every track (negative also catches overview averaging)
+  if (v < 0) return SHADOW_NO_DATA;
   if (v < 0.2) return GMSI_RED;
   if (v < 0.4) return GMSI_ORANGE;
   return GMSI_GREEN;
@@ -48,6 +50,7 @@ function gmsiLegend() {
     { color: "#1A9641", label: t("legend.gmsi.green") },
     { color: "#FDB863", label: t("legend.gmsi.yellow") },
     { color: "#D7191C", label: t("legend.gmsi.red") },
+    { color: "#5A5A5A", label: t("legend.gmsi.blocked") },
   ];
 }
 
@@ -104,6 +107,7 @@ function groupLabel(g) {
 
 // text-label counterparts of the color functions, for the click-to-query popup
 function gmsiLabel(v) {
+  if (v < 0) return "nicht sichtbar (Radarschatten / Layover)";
   if (v < 0.2) return "schlechte Bedingungen";
   if (v < 0.4) return "Messungen möglich, aber mit Vorsicht";
   return "sehr gute Bedingungen";

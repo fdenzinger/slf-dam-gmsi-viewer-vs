@@ -345,6 +345,7 @@ function verdictFor(v) {
   if (v === null) {
     return { cls: "none", title: t("verdict.none.title"), text: t("verdict.none.text") };
   }
+  if (v < 0) return { cls: "blocked", title: t("verdict.blocked.title"), text: t("verdict.blocked.text") };
   if (v >= 0.4) return { cls: "good", title: t("verdict.good.title"), text: t("verdict.good.text") };
   if (v >= 0.2) return { cls: "mid", title: t("verdict.mid.title"), text: t("verdict.mid.text") };
   return { cls: "bad", title: t("verdict.bad.title"), text: t("verdict.bad.text") };
@@ -447,7 +448,7 @@ async function showSiteSummary(latlng) {
   L.DomEvent.disableClickPropagation(box); // clicks on the button/table must not trigger a new map click
   const head = el("div", `verdict verdict-${verdict.cls}`);
   head.appendChild(el("strong", "", verdict.title));
-  if (cv !== null) head.appendChild(el("span", "verdict-value", `GMSI ${cv.toFixed(2)}`));
+  if (cv !== null && cv >= 0) head.appendChild(el("span", "verdict-value", `GMSI ${cv.toFixed(2)}`));
   box.appendChild(head);
   box.appendChild(el("p", "verdict-text", verdict.text));
 
@@ -1018,7 +1019,7 @@ dropzone.addEventListener("drop", async (e) => {
 // GitHub Pages deployment: the raster data lives on Zenodo (files this
 // large can't go through git/GitHub Pages directly -- see PUBLISHING.txt),
 // while the app itself is this static site.
-const ZENODO_RECORD_ID = "23084804";
+const ZENODO_RECORD_ID = "23154168";
 const RASTER_BASE_URL = `https://zenodo.org/api/records/${ZENODO_RECORD_ID}/files/`;
 
 // The COGs are streamed with HTTP range requests, so "loading" a layer only

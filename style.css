@@ -443,6 +443,7 @@ body.sidebar-collapsed #sidebar-toggle svg { transform: rotate(180deg); }
 .verdict-mid { background: #d98a1f; }
 .verdict-bad { background: #D7191C; }
 .verdict-none { background: #777; }
+.verdict-blocked { background: #5A5A5A; }
 .verdict-value { font-size: 12px; opacity: 0.95; }
 .site-summary .track-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 4px; }
 .track-table th { text-align: left; color: #666; font-weight: 600; padding: 2px 4px; border-bottom: 1px solid var(--border); }
