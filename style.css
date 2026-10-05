@@ -418,7 +418,7 @@ body.sidebar-collapsed #sidebar-toggle svg { transform: rotate(180deg); }
   body.sidebar-collapsed #sidebar-toggle { left: 10px; }
   #prototype-ribbon { width: 150px; height: 150px; }
   /* the band sits a little further from the corner than on desktop so the 52 px logo stays clear of it */
-  #prototype-ribbon span { top: 62px; right: -26px; width: 190px; font-size: 12px; padding: 5px 0; }
+  #prototype-ribbon span { top: 62px; right: -71px; width: 280px; font-size: 12px; padding: 5px 0; } /* long enough to run off both screen edges, same centre line as before */
   #prototype-ribbon::before { clip-path: polygon(-18px 0, 100% 0, 100% calc(100% + 18px)); }
 }
 

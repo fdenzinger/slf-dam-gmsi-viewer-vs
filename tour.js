@@ -9,6 +9,8 @@
 
   // each step: where it points (selectors, joined into one box), which part of the UI it needs
   // and, for the layer steps, which mode (Standard/Erweitert) has to be showing
+  const BASE_CTRL = ".basemap-control:not(.area-control):not(.share-control)";
+  const SHARE_CTRL = ".share-control";
   const STEPS = [
     { id: "layers", sel: ["#layer-tree"], ui: "sidebar", mode: "easy" },
     { id: "toggle", sel: ['.layer-group[data-group="1"] .layer-item'], ui: "sidebar", mode: "easy" },
@@ -23,7 +25,8 @@
     { id: "compare", sel: ["#map"], ui: "map", center: true, demo: "compare" },
     { id: "area", sel: [".area-control"], ui: "map", demo: "area" },
     { id: "measure", sel: [".measure-control-btn"], ui: "map" },
-    { id: "base", sel: [".basemap-control:not(.area-control)"], ui: "map" },
+    { id: "base", sel: [BASE_CTRL], ui: "map", demo: "base" },
+    { id: "share", sel: [SHARE_CTRL], ui: "map", demo: "share" },
     { id: "note", sel: ["#info-btn"], ui: "sidebar" },
   ];
 
@@ -35,7 +38,7 @@
 
   const DEMOS = {
     GR: { place: "St. Moritz", point: [2785004, 1150337], polygon: [[2784150, 1150950], [2785800, 1151050], [2785900, 1149800], [2784500, 1149650], [2784100, 1150300]] },
-    VS: { place: "Zermatt", point: [2622008, 1094265], polygon: [[2621200, 1094950], [2622900, 1095000], [2623000, 1093750], [2621600, 1093650], [2621150, 1094200]] },
+    VS: { place: "Zermatt", point: [2623185, 1095735], polygon: [[2621200, 1094950], [2622900, 1095000], [2623000, 1093750], [2621600, 1093650], [2621150, 1094200]] },
   };
   function demoCfg() {
     const m = typeof LAYER_MANIFEST !== "undefined" && LAYER_MANIFEST.find((e) => e.file.endsWith("_composite.tif"));
@@ -70,8 +73,25 @@
 
   // What the highlight sits on while a demo runs. Each demo has phases: first the thing the visitor
   // would use (click spot / button / tool), then, once it has been used, the window that opened.
+  function unionRects(list) {
+    const rs = list.filter(Boolean);
+    if (!rs.length) return null;
+    const l = Math.min(...rs.map((r) => r.left)), t = Math.min(...rs.map((r) => r.top));
+    const r = Math.max(...rs.map((r) => r.left + r.width)), b = Math.max(...rs.map((r) => r.top + r.height));
+    return { left: l, top: t, width: r - l, height: b - t };
+  }
   function demoRect(kind) {
     const phase = tour.demoPhase;
+    if (kind === "base") {
+      const btn = firstRect(BASE_CTRL + " .basemap-control-btn");
+      if (phase === "menu") return unionRects([btn, firstRect(BASE_CTRL + " .basemap-control-menu:not(.hidden)")]) || btn;
+      return btn;
+    }
+    if (kind === "share") {
+      const btn = firstRect(SHARE_CTRL + " .basemap-control-btn");
+      if (phase === "result") return unionRects([btn, firstRect(SHARE_CTRL + " .share-toast:not(.hidden)")]) || btn;
+      return btn;
+    }
     if (kind === "point") {
       if (phase === "result") return popupRect() || spotRect();
       return spotRect();
@@ -132,6 +152,7 @@
   }
 
   async function prepareDemoView(kind) {
+    if (kind === "base" || kind === "share") return; // these demos use the controls, the map stays where it is
     const map = state.map, cfg = demoCfg(), animate = !reduced();
     if (!tour.mapView) tour.mapView = { center: map.getCenter(), zoom: map.getZoom() };
     map.invalidateSize();
@@ -175,6 +196,12 @@
     tour.demoPhase = null;
     tour.drawPts = [];
     tour.cursorLive = false;
+    if (tour.prevBasemap) { // the basemap demo switched to the aerial image: put the visitor's choice back
+      if (state.currentBasemap !== tour.prevBasemap) chooseBasemap(tour.prevBasemap);
+      tour.prevBasemap = null;
+    }
+    document.querySelectorAll(".basemap-control-menu").forEach((m) => m.classList.add("hidden"));
+    document.querySelectorAll(".share-toast").forEach((m) => m.classList.add("hidden"));
     if (!tour.demoActive) return;
     tour.demoActive = false;
     state.tourDemo = false;
@@ -232,6 +259,43 @@
       showSiteSummary(latlng);
       await waitFor(popupRect);
       if (!alive()) return;
+      setPhase("result");
+    } else if (kind === "base") {
+      setPhase("button");
+      const btn = document.querySelector(BASE_CTRL + " .basemap-control-btn");
+      const c0 = centre(rectOf(btn));
+      await startAt(c0);
+      if (!alive()) return;
+      await place(c0, quick ? 0 : 800);
+      if (!alive()) return;
+      await click();
+      if (!alive()) return;
+      tour.prevBasemap = state.currentBasemap;
+      document.querySelector(BASE_CTRL + " .basemap-control-menu").classList.remove("hidden"); // what the button does
+      setPhase("menu");
+      const item = document.querySelector(BASE_CTRL + ' .basemap-control-item[data-value="swissimage"]');
+      const c1 = centre(rectOf(item));
+      await sleep(quick ? 0 : 400);
+      await place(c1, quick ? 0 : 700);
+      if (!alive()) return;
+      await click();
+      if (!alive()) return;
+      item.click(); // the real menu entry: switches the basemap and closes the menu
+      setPhase("result");
+    } else if (kind === "share") {
+      setPhase("button");
+      const btn = document.querySelector(SHARE_CTRL + " .basemap-control-btn");
+      const c0 = centre(rectOf(btn));
+      await startAt(c0);
+      if (!alive()) return;
+      await place(c0, quick ? 0 : 800);
+      if (!alive()) return;
+      await click();
+      if (!alive()) return;
+      // only the confirmation is shown: the demo must not overwrite the visitor's clipboard
+      const toast = document.querySelector(SHARE_CTRL + " .share-toast");
+      toast.textContent = t("share.copied");
+      toast.classList.remove("hidden");
       setPhase("result");
     } else if (kind === "compare") {
       if (!document.querySelector(".leaflet-popup-content-wrapper")) showSiteSummary(latlng);
