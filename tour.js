@@ -12,33 +12,63 @@
   const BASE_CTRL = ".basemap-control:not(.area-control):not(.share-control)";
   const SHARE_CTRL = ".share-control";
   const STEPS = [
+    // 1. the two halves of the screen
+    { id: "sidebar", sel: ["#sidebar"], ui: "sidebar" },
+    { id: "map", sel: ["#map"], ui: "map", wide: true },
+    { id: "fold", sel: ["#sidebar-toggle"], ui: "sidebar", demo: "sidebar" },
+    // 2. the sidebar: language, layers + legend, Standard mode (overview, best track), Advanced mode (single tracks)
+    { id: "lang", sel: ["#lang-toggle"], ui: "sidebar" },
     { id: "layers", sel: ["#layer-tree"], ui: "sidebar", mode: "easy" },
-    { id: "toggle", sel: ['.layer-group[data-group="1"] .layer-item'], ui: "sidebar", mode: "easy" },
-    { id: "standard", sel: ["#mode-easy"], ui: "sidebar", mode: "easy" },
-    { id: "best", sel: ['.layer-group[data-group="2"]'], ui: "sidebar", mode: "easy" },
+    { id: "toggle", sel: ['.layer-group[data-group="1"] .layer-item'], ui: "sidebar", mode: "easy", demo: "toggle" },
     { id: "legend", sel: ["#legend"], ui: "sidebar", mode: "easy" },
+    { id: "modes", sel: ["#mode-toggle"], ui: "sidebar", mode: "easy", demo: "modes" },
+    { id: "standard", sel: ["#mode-easy"], ui: "sidebar", mode: "easy" },
+    { id: "overview", sel: ['.layer-group[data-group="1"] .layer-item'], ui: "sidebar", mode: "easy" },
+    { id: "best", sel: ['.layer-group[data-group="2"]'], ui: "sidebar", mode: "easy", demo: "layer" },
     { id: "expert", sel: ["#mode-expert"], ui: "sidebar", mode: "expert" },
-    { id: "tracks", sel: ['.layer-group[data-group="3"]'], ui: "sidebar", mode: "expert" },
-    { id: "shadow", sel: ['.layer-group[data-group="4"]'], ui: "sidebar", mode: "expert" },
-    { id: "search", sel: ["#search-box"], ui: "sidebar" },
+    { id: "tracks", sel: ['.layer-group[data-group="3"]'], ui: "sidebar", mode: "expert", demo: "tracks" },
+    { id: "shadow", sel: ['.layer-group[data-group="4"]'], ui: "sidebar", mode: "expert", demo: "shadow" },
+    // 3. controls and query tools
+    { id: "zoom", sel: [".leaflet-control-zoom"], ui: "map", demo: "zoom" },
+    { id: "search", sel: ["#search-box"], ui: "sidebar", demo: "search" },
     { id: "point", sel: ["#map"], ui: "map", center: true, demo: "point" },
     { id: "compare", sel: ["#map"], ui: "map", center: true, demo: "compare" },
     { id: "area", sel: [".area-control"], ui: "map", demo: "area" },
-    { id: "measure", sel: [".measure-control-btn"], ui: "map" },
+    { id: "measure", sel: [".measure-control-btn"], ui: "map", demo: "measure" },
     { id: "base", sel: [BASE_CTRL], ui: "map", demo: "base" },
     { id: "share", sel: [SHARE_CTRL], ui: "map", demo: "share" },
     { id: "note", sel: ["#info-btn"], ui: "sidebar" },
   ];
 
-  const tour = { active: false, index: 0, els: null, wasCollapsed: false, snapshot: null, demoToken: 0, demoActive: false, goToken: 0, mapView: null };
+  const tour = { active: false, index: 0, els: null, wasCollapsed: false, snapshot: null, demoToken: 0, demoActive: false, goToken: 0, mapView: null, layerOrig: {}, demoFiles: [], sliderOrig: null, zoomTouched: false, zoomView: null, sidebarTouched: false, measureTouched: false, measurePts: [] };
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   // ---- live demos for the "point" and "area" steps: the tour does what the visitor would do
 
   const DEMOS = {
-    GR: { place: "St. Moritz", point: [2785004, 1150337], polygon: [[2784150, 1150950], [2785800, 1151050], [2785900, 1149800], [2784500, 1149650], [2784100, 1150300]] },
+    GR: { place: "Piz Buin Pitschen", point: [2803925, 1191324], polygon: [[2802950, 1191780], [2803250, 1191390], [2803500, 1191250], [2803950, 1191340], [2804400, 1191590], [2804700, 1192050], [2805400, 1191990], [2806000, 1190050], [2805100, 1189850], [2803900, 1190300], [2803100, 1190900]] }, // along the border from the west of Piz Buin Pitschen, down to the Chamonna Tuoi, with Cronsel
     VS: { place: "Zermatt", point: [2623185, 1095735], polygon: [[2621200, 1094950], [2622900, 1095000], [2623000, 1093750], [2621600, 1093650], [2621150, 1094200]] },
+  };
+  // switch a layer with its real checkbox; the first change of each layer is remembered so the tour can put it back
+  function tickLayer(file, on) {
+    const en = state.layers[file];
+    if (!en || !en.checkboxEl) return false;
+    if (!(file in tour.layerOrig)) tour.layerOrig[file] = !!en.checked;
+    if (!!en.checked !== on) en.checkboxEl.click();
+    return true;
+  }
+  function undoLayers() {
+    for (const [file, was] of Object.entries(tour.layerOrig)) {
+      const en = state.layers[file];
+      if (en && en.checkboxEl && !!en.checked !== was) en.checkboxEl.click();
+    }
+    tour.layerOrig = {};
+  }
+  const trackFile = (kind, track) => (typeof LAYER_MANIFEST !== "undefined" && (LAYER_MANIFEST.find((e) => e.kind === kind && e.label === track) || {}).file) || null;
+  const manifestFileOf = (suffix) => {
+    const m = typeof LAYER_MANIFEST !== "undefined" && LAYER_MANIFEST.find((e) => e.file.endsWith(suffix));
+    return m ? m.file : null;
   };
   function demoCfg() {
     const m = typeof LAYER_MANIFEST !== "undefined" && LAYER_MANIFEST.find((e) => e.file.endsWith("_composite.tif"));
@@ -82,6 +112,32 @@
   }
   function demoRect(kind) {
     const phase = tour.demoPhase;
+    if (kind === "sidebar") return firstRect("#sidebar-toggle");
+    if (kind === "zoom") return tour.demoPhase === "pan" ? firstRect("#map") : firstRect(".leaflet-control-zoom");
+    if (kind === "modes") return firstRect("#mode-toggle");
+    if (kind === "measure") {
+      if (tour.demoPhase === "tool") return firstRect(".measure-control-btn");
+      // the line as drawn so far, read from the line's own SVG path (always where it is on screen)
+      let line = null;
+      const path = typeof measureState !== "undefined" && measureState.line && measureState.line.getLayers
+        ? measureState.line.getLayers().map((l) => l._path && l._path.getBoundingClientRect()).filter((r) => r && r.width + r.height > 0)[0] : null;
+      if (path) line = { left: path.left - 10, top: path.top - 10, width: path.width + 20, height: path.height + 20 };
+      const label = tour.demoPhase === "result" ? firstRect(".measure-label-total") : null;
+      return unionRects([line, label]) || firstRect(".measure-control-btn");
+    }
+    if (kind === "layer" || kind === "tracks" || kind === "shadow" || kind === "toggle") {
+      // the layer rows the demo works with (their rows grow when the transparency slider appears: reposition() keeps up)
+      const rects = (tour.demoFiles || []).map((f) => {
+        const en = state.layers[f], row = en && en.checkboxEl && en.checkboxEl.closest(".layer-item");
+        return row ? rectOf(row) : null;
+      });
+      return unionRects(rects) || firstRect("#layer-tree");
+    }
+    if (kind === "search") {
+      const input = firstRect("#search-input");
+      if (phase === "results") return unionRects([input, firstRect("#search-results:not(.hidden)")]) || input;
+      return input;
+    }
     if (kind === "base") {
       const btn = firstRect(BASE_CTRL + " .basemap-control-btn");
       if (phase === "menu") return unionRects([btn, firstRect(BASE_CTRL + " .basemap-control-menu:not(.hidden)")]) || btn;
@@ -142,6 +198,31 @@
     tour.els.spot.style.visibility = "hidden";
   }
 
+  // measure demo: only the line (and its total label) stays bright, everything else is dimmed
+  function setLineShape(points, labelRect) {
+    let svg = document.getElementById("tour-line");
+    if (!points || points.length < 2) {
+      if (svg) svg.style.display = "none";
+      return false;
+    }
+    if (!svg) {
+      svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.id = "tour-line";
+      svg.innerHTML = '<defs><mask id="tour-line-mask" maskUnits="userSpaceOnUse"><rect class="all" fill="#fff"/><g class="holes" stroke="#000" fill="#000"><polyline class="ln" fill="none" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/><rect class="lbl"/></g></mask></defs><rect class="dim" mask="url(#tour-line-mask)"/>';
+      document.body.appendChild(svg);
+    }
+    const w = window.innerWidth, h = window.innerHeight;
+    for (const r of svg.querySelectorAll(".all, .dim")) { r.setAttribute("x", 0); r.setAttribute("y", 0); r.setAttribute("width", w); r.setAttribute("height", h); }
+    svg.querySelector(".ln").setAttribute("points", points.map((q) => `${q[0]},${q[1]}`).join(" "));
+    const lbl = svg.querySelector(".lbl");
+    if (labelRect) {
+      lbl.setAttribute("x", labelRect.left - 6); lbl.setAttribute("y", labelRect.top - 6);
+      lbl.setAttribute("width", labelRect.width + 12); lbl.setAttribute("height", labelRect.height + 12); lbl.setAttribute("rx", 6);
+    } else { lbl.setAttribute("width", 0); lbl.setAttribute("height", 0); }
+    svg.style.display = "block";
+    return true;
+  }
+
   function waitMoveEnd(map, timeout) {
     return new Promise((resolve) => {
       let done = false;
@@ -151,21 +232,20 @@
     });
   }
 
+  // where the map sits for the point demo; the search demo jumps to the same place so the next step starts right there
+  function pointDemoCenter() {
+    return demoLatLng(demoCfg().point); // the spot sits in the middle of the map, as after a search
+  }
+
   async function prepareDemoView(kind) {
-    if (kind === "base" || kind === "share") return; // these demos use the controls, the map stays where it is
+    if (kind === "base" || kind === "share" || kind === "search" || kind === "layer" || kind === "tracks" || kind === "shadow" || kind === "toggle" || kind === "sidebar" || kind === "zoom" || kind === "modes") return; // these demos use the controls, the map stays where it is
     const map = state.map, cfg = demoCfg(), animate = !reduced();
     if (!tour.mapView) tour.mapView = { center: map.getCenter(), zoom: map.getZoom() };
     map.invalidateSize();
     if (kind === "point" || kind === "compare") {
-      const c = demoLatLng(cfg.point);
-      let center = c;
-      if (!narrow()) { // keep the point left of centre: the popup opens at the point, the tour card sits on the right
-        const z = 8;
-        center = map.unproject(map.project(c, z).add([map.getSize().x * 0.18, 0]), z);
-      }
-      map.setView(center, 8, { animate });
+      map.setView(pointDemoCenter(), 8, { animate });
     } else {
-      map.fitBounds(L.latLngBounds(cfg.polygon.map(demoLatLng)), { padding: [70, 70], maxZoom: 9, animate });
+      map.fitBounds(L.latLngBounds(cfg.polygon.map(demoLatLng)), { padding: [kind === "measure" ? 150 : 70, kind === "measure" ? 150 : 70], maxZoom: 9, animate });
     }
     await waitMoveEnd(map, animate ? 1300 : 50);
   }
@@ -188,10 +268,11 @@
   }
 
   // keepPopup: the "compare tracks" step carries on with the popup the "point" step opened
-  function clearDemo(keepPopup) {
+  function clearDemo(keepPopup, keepLayers) {
     tour.demoToken++;
     hideCursor();
     setShape(null);
+    setLineShape(null);
     if (keepPopup) return;
     tour.demoPhase = null;
     tour.drawPts = [];
@@ -199,6 +280,35 @@
     if (tour.prevBasemap) { // the basemap demo switched to the aerial image: put the visitor's choice back
       if (state.currentBasemap !== tour.prevBasemap) chooseBasemap(tour.prevBasemap);
       tour.prevBasemap = null;
+    }
+    if (!keepLayers) { tour.demoFiles = []; undoLayers(); } // the layer demos switched layers: put them back
+    if (tour.measureTouched) { // the measure demo drew a line
+      tour.measureTouched = false;
+      tour.measurePts = [];
+      if (typeof cancelMeasure === "function") cancelMeasure();
+      if (typeof clearMeasurement === "function") clearMeasurement();
+    }
+    if (tour.zoomTouched) { // the zoom demo changed the zoom level: back to the view the step started with
+      tour.zoomTouched = false;
+      if (tour.zoomView) state.map.setView(tour.zoomView.center, tour.zoomView.zoom, { animate: false });
+      tour.zoomView = null;
+    }
+    if (tour.sidebarTouched) { // the sidebar demo collapsed it: open again
+      tour.sidebarTouched = false;
+      if (sidebarCollapsed() && !narrow()) setSidebar(false);
+    }
+    if (tour.sliderOrig) { // the toggle demo moved a transparency slider
+      const sl = tour.sliderOrig.el;
+      if (sl && sl.value !== tour.sliderOrig.value) { sl.value = tour.sliderOrig.value; sl.dispatchEvent(new Event("input")); }
+      tour.sliderOrig = null;
+    }
+    if (tour.searchTouched) { // the search demo typed into the field and moved the map: undo both
+      tour.searchTouched = false;
+      const input = document.getElementById("search-input"), res = document.getElementById("search-results");
+      if (input) input.value = "";
+      if (res) { res.classList.add("hidden"); res.innerHTML = ""; }
+      if (tour.searchMoved && tour.mapView) state.map.setView(tour.mapView.center, tour.mapView.zoom, { animate: false });
+      tour.searchMoved = false;
     }
     document.querySelectorAll(".basemap-control-menu").forEach((m) => m.classList.add("hidden"));
     document.querySelectorAll(".share-toast").forEach((m) => m.classList.add("hidden"));
@@ -260,6 +370,241 @@
       await waitFor(popupRect);
       if (!alive()) return;
       setPhase("result");
+    } else if (kind === "sidebar") {
+      const btn = document.getElementById("sidebar-toggle");
+      if (!btn) return;
+      tour.sidebarTouched = true;
+      setPhase("button");
+      const follow = async (ms) => { // the button moves with the sidebar: keep the highlight on it
+        const t0 = Date.now();
+        while (alive() && Date.now() - t0 < ms) { reposition(); await sleep(40); }
+      };
+      let c = centre(rectOf(btn));
+      await startAt(c);
+      if (!alive()) return;
+      await place(c, quick ? 0 : 800);
+      if (!alive()) return;
+      await click();
+      if (!alive()) return;
+      btn.click(); // the real button: the sidebar slides away and the map gets the whole width
+      await follow(quick ? 0 : 700);
+      if (!alive()) return;
+      await sleep(quick ? 0 : 800);
+      c = centre(rectOf(btn));
+      await place(c, quick ? 0 : 700);
+      if (!alive()) return;
+      await click();
+      if (!alive()) return;
+      btn.click(); // and open again
+      await follow(quick ? 0 : 700);
+    } else if (kind === "zoom") {
+      const zin = document.querySelector(".leaflet-control-zoom-in"), zout = document.querySelector(".leaflet-control-zoom-out");
+      if (!zin || !zout) return;
+      tour.zoomTouched = true;
+      tour.zoomView = { center: state.map.getCenter(), zoom: state.map.getZoom() };
+      if (!tour.mapView) tour.mapView = { center: state.map.getCenter(), zoom: state.map.getZoom() };
+      setPhase("buttons");
+      const press = async (btn, times) => {
+        const c = centre(rectOf(btn));
+        await place(c, quick ? 0 : 650);
+        for (let i = 0; i < times && alive(); i++) {
+          await click();
+          btn.click(); // the real zoom button
+          await sleep(quick ? 0 : 900);
+        }
+      };
+      await startAt(centre(rectOf(zin)));
+      if (!alive()) return;
+      await press(zin, 2);
+      if (!alive()) return;
+      // panning: grab the map in the middle and drag it, like with the mouse
+      setPhase("pan");
+      const mr = rectOf(document.getElementById("map")), mid = [mr.left + mr.width * 0.5, mr.top + mr.height * 0.55];
+      await place(mid, quick ? 0 : 700);
+      if (!alive()) return;
+      cursor.classList.add("grab");
+      await click();
+      const drag = async (dx, dy) => { // the cursor and the map move together
+        const steps = quick ? 1 : 18;
+        for (let i = 1; i <= steps && alive(); i++) {
+          state.map.panBy([-dx / steps, -dy / steps], { animate: false });
+          const cur = cursor.style.transform.match(/-?\d+(\.\d+)?/g).map(Number);
+          cursor.style.transitionDuration = "0ms";
+          cursor.style.transform = `translate(${cur[0] + dx / steps}px, ${cur[1] + dy / steps}px)`;
+          await sleep(quick ? 0 : 30);
+        }
+      };
+      await drag(-220, -90);
+      await sleep(quick ? 0 : 300);
+      await drag(220, 90);
+      cursor.classList.remove("grab");
+      if (!alive()) return;
+      setPhase("buttons");
+      await sleep(quick ? 0 : 300);
+      await press(zout, 2);
+    } else if (kind === "modes") {
+      const bx = document.getElementById("mode-expert"), bs = document.getElementById("mode-easy");
+      if (!bx || !bs) return;
+      setPhase("switch");
+      let c = centre(rectOf(bx));
+      await startAt(c);
+      if (!alive()) return;
+      await place(c, quick ? 0 : 800);
+      if (!alive()) return;
+      await click();
+      if (!alive()) return;
+      bx.click(); // the real switch: the Advanced layer groups appear
+      await sleep(quick ? 0 : 1600);
+      if (!alive()) return;
+      c = centre(rectOf(bs));
+      await place(c, quick ? 0 : 750);
+      if (!alive()) return;
+      await click();
+      if (!alive()) return;
+      bs.click(); // and back to Standard
+      await sleep(quick ? 0 : 500);
+    } else if (kind === "measure") {
+      setPhase("tool");
+      const btn = document.querySelector(".measure-control-btn");
+      if (!btn) return;
+      tour.measureTouched = true;
+      const c0 = centre(rectOf(btn));
+      await startAt(c0);
+      if (!alive()) return;
+      await place(c0, quick ? 0 : 800);
+      if (!alive()) return;
+      await click();
+      if (!alive()) return;
+      startMeasure(); // the real tool, including its hint bar
+      setPhase("draw");
+      const poly = cfg.polygon.map(demoLatLng);
+      const n = poly.length;
+      const path = [0, Math.floor(n * 0.25), Math.floor(n * 0.5), Math.floor(n * 0.75)].map((k) => poly[k]); // spread over the demo area
+      tour.measurePts = [];
+      for (let i = 0; i < path.length; i++) {
+        const pt = demoPagePoint(path[i]);
+        await place(pt, quick ? 0 : 650);
+        if (!alive()) return;
+        await click();
+        if (!alive()) return;
+        tour.measurePts.push(pt);
+        onMeasureMapClick({ latlng: path[i] });
+        reposition();
+      }
+      // a click on the last point ends the measurement, as for a visitor
+      const lastPt = demoPagePoint(path[path.length - 1]);
+      await click();
+      if (!alive()) return;
+      finishMeasure();
+      hideCursor();
+      setPhase("result");
+      const followMove = () => { if (alive()) reposition(); };
+      state.map.on("move moveend", followMove); // keep the highlight on the line if the map is still settling
+      for (let k = 0; k < 12 && alive(); k++) { await sleep(250); reposition(); }
+      state.map.off("move moveend", followMove);
+      return;
+    } else if (kind === "toggle") {
+      const comp = manifestFileOf("_composite.tif"), en = comp && state.layers[comp];
+      if (!en || !en.checkboxEl) return;
+      tour.demoFiles = [comp];
+      setPhase("layers");
+      // 1. switch the layer off and on again with its checkbox
+      const c0 = centre(rectOf(en.checkboxEl));
+      await startAt(c0);
+      if (!alive()) return;
+      await place(c0, quick ? 0 : 800);
+      if (!alive()) return;
+      await click();
+      if (!alive()) return;
+      tickLayer(comp, false);
+      await sleep(quick ? 0 : 1100);
+      if (!alive()) return;
+      await click();
+      if (!alive()) return;
+      tickLayer(comp, true);
+      await sleep(quick ? 0 : 900);
+      if (!alive()) return;
+      // 2. drag the transparency slider to the right and back
+      const sl = en.sliderEl;
+      if (!sl || !rectOf(sl)) return;
+      tour.sliderOrig = { el: sl, value: sl.value };
+      const sr = rectOf(sl), at = (v) => [sr.left + 8 + ((sr.width - 16) * v) / 100, sr.top + sr.height / 2];
+      const from = Number(sl.value), to = 80;
+      await place(at(from), quick ? 0 : 700);
+      if (!alive()) return;
+      await click();
+      const setSlider = (v) => { sl.value = String(v); sl.dispatchEvent(new Event("input")); };
+      const sweep = async (a, b) => {
+        const n = quick ? 1 : 24;
+        for (let i = 1; i <= n && alive(); i++) {
+          const v = Math.round(a + ((b - a) * i) / n);
+          setSlider(v);
+          await place(at(v), quick ? 0 : 30);
+        }
+      };
+      await sweep(from, to);
+      await sleep(quick ? 0 : 700);
+      await sweep(to, from);
+      await sleep(quick ? 0 : 300);
+    } else if (kind === "layer" || kind === "tracks" || kind === "shadow") {
+      // the demos below click the real checkboxes, in this order; layers that already are in the wanted state are left alone
+      const comp = manifestFileOf("_composite.tif"), gmsiA = trackFile("gmsi", "A015"), shadowA = trackFile("shadow", "A015");
+      const plan = kind === "layer" ? [[comp, false], [manifestFileOf("_best_orbit.tif"), true]]
+        : kind === "tracks" ? [[comp, false], [gmsiA, true]]
+        : [[comp, false], [gmsiA, false], [shadowA, true]]; // the track's GMSI goes off, so the grey of the shadow layer stands out
+      tour.demoFiles = kind === "layer" ? [comp, manifestFileOf("_best_orbit.tif")] : kind === "tracks" ? [comp, gmsiA] : [gmsiA, shadowA];
+      setPhase("layers");
+      let started = false;
+      for (const [file, on] of plan) {
+        const en = file && state.layers[file];
+        if (!en || !en.checkboxEl) continue;
+        if (!!en.checked === on) { tickLayer(file, on); continue; } // already as wanted (e.g. kept from the previous step)
+        const c = centre(rectOf(en.checkboxEl));
+        if (!started) { await startAt(c); started = true; }
+        if (!alive()) return;
+        await place(c, quick ? 0 : 750);
+        if (!alive()) return;
+        await click();
+        if (!alive()) return;
+        tickLayer(file, on); // the real checkbox: switches the layer and loads it if needed
+        if (on) await waitFor(() => en.leafletLayer && state.map.hasLayer(en.leafletLayer), 20000); // the data is read from Zenodo
+        if (!alive()) return;
+        await sleep(quick ? 0 : 450);
+      }
+    } else if (kind === "search") {
+      const input = document.getElementById("search-input"), res = document.getElementById("search-results");
+      if (!tour.mapView) tour.mapView = { center: state.map.getCenter(), zoom: state.map.getZoom() };
+      tour.searchTouched = true;
+      input.value = "";
+      res.classList.add("hidden");
+      setPhase("field");
+      const c0 = centre(rectOf(input));
+      await startAt(c0);
+      if (!alive()) return;
+      await place(c0, quick ? 0 : 700);
+      if (!alive()) return;
+      await click();
+      if (!alive()) return;
+      for (const ch of cfg.place) { // typed like a visitor; the real search runs on these input events
+        input.value += ch;
+        input.dispatchEvent(new Event("input"));
+        await sleep(quick ? 0 : 130);
+        if (!alive()) return;
+      }
+      const row = await waitFor(() => res.children.length && !res.classList.contains("hidden") && res.firstElementChild, 10000);
+      if (!alive() || !row) return;
+      setPhase("results");
+      await sleep(quick ? 0 : 700);
+      const c1 = centre(rectOf(row));
+      await place(c1, quick ? 0 : 700);
+      if (!alive()) return;
+      await click();
+      if (!alive()) return;
+      row.click(); // the real result: fills the field (and starts the app's own zoom to the place)
+      input.value = cfg.place; // the field shows the short name that was typed, not the long official label of the hit
+      state.map.setView(pointDemoCenter(), 8, { animate: !quick }); // ...which is replaced by a jump to the spot the next step uses
+      tour.searchMoved = true;
+      setPhase("field");
     } else if (kind === "base") {
       setPhase("button");
       const btn = document.querySelector(BASE_CTRL + " .basemap-control-btn");
@@ -427,6 +772,11 @@
     const { pop, spot } = tour.els;
     spot.classList.toggle("light", !!(step && step.demo)); // demos need the map visible, so dim less
     setShape(step && step.demo === "area" && tour.demoPhase === "draw" ? liveDrawPoints() : null);
+    // measure demo: highlight the line itself instead of a box around it
+    const lineMode = !!(step && step.demo === "measure" && (tour.demoPhase === "draw" || tour.demoPhase === "result"));
+    setLineShape(lineMode ? (typeof measureState !== "undefined" ? measureState.points : []).map(demoPagePoint) : null,
+      lineMode && tour.demoPhase === "result" ? firstRect(".measure-label-total") : null);
+    if (lineMode) spot.style.visibility = "hidden";
     const pad = 6;
     if (tour.firstPlace) { // first step after start: appear in place instead of flying in from the corner
       spot.style.transition = "none";
@@ -443,7 +793,7 @@
     pop.style.top = "0px";
     const pw = pop.offsetWidth, ph = pop.offsetHeight;
     let x, y;
-    if (step && step.demo && !narrow()) {
+    if (step && (step.wide || (step.demo && !["search", "layer", "tracks", "shadow", "toggle", "sidebar", "zoom", "modes"].includes(step.demo))) && !narrow()) {
       // demos: the card goes to the right edge so it never covers the popup or the result panel
       x = vw - pw - 16;
       y = Math.max(m, 120);
@@ -490,7 +840,7 @@
     const title = document.createElement("h3");
     title.textContent = t(`tour.${step.id}.title`);
     const body = document.createElement("p");
-    body.innerHTML = t(`tour.${step.id}.text`);
+    body.innerHTML = t(`tour.${step.id}.text`, { place: demoCfg().place });
     const nav = document.createElement("div");
     nav.className = "tour-nav";
     const prev = document.createElement("button");
@@ -527,7 +877,11 @@
     const stale = () => !tour.active || myGo !== tour.goToken;
     const prevStep = STEPS[tour.index];
     // whatever the previous step demonstrated goes away first (the compare step reuses the point step's popup)
-    clearDemo(!!(STEPS[i].demo === "compare" && prevStep && prevStep.demo === "point" && i === tour.index + 1));
+    const forward = i === tour.index + 1;
+    clearDemo(
+      !!(STEPS[i].demo === "compare" && prevStep && prevStep.demo === "point" && forward),
+      !!(STEPS[i].demo === "shadow" && prevStep && prevStep.demo === "tracks" && forward) // the track layer stays on to show the shadow layer with it
+    );
     tour.index = i;
     const step = STEPS[i];
     // layer steps need a specific mode; the others show the app as the visitor had it
@@ -592,6 +946,7 @@
     clearDemo();
     tour.active = false;
     setShape(null);
+    setLineShape(null);
     document.body.classList.remove("tour-active");
     if (tour.mapView) { // the demos moved the map: put it back where the visitor had it
       state.map.setView(tour.mapView.center, tour.mapView.zoom, { animate: false });

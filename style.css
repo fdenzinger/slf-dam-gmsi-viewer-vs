@@ -602,3 +602,16 @@ body:not(.tour-active) #tour-cursor { display: none; }
 body:not(.tour-active) #tour-shape { display: none !important; }
 #tour-shape .dim { fill: rgba(15, 23, 32, 0.45); }
 #tour-shape .edge { stroke: #fff; stroke-width: 3; stroke-linejoin: round; }
+
+/* search hits: place name with a small gray type / region line */
+.search-result .sr-name { display: block; }
+.search-result .sr-meta { display: block; font-size: 11px; color: #777; }
+
+.area-border-hint { margin: 4px 0 8px; padding: 6px 8px; background: #fff4e5; border-left: 3px solid #e08a00; border-radius: 3px; font-size: 12px; line-height: 1.4; color: #5b3a00; }
+.area-nodata-row td { border-top: 1px solid #e6e8eb; padding-top: 5px; color: #666; }
+#tour-cursor.grab svg { transform: scale(0.85); }
+
+/* measure demo: only the line stays bright */
+#tour-line { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 200001; pointer-events: none; display: none; }
+body:not(.tour-active) #tour-line { display: none !important; }
+#tour-line .dim { fill: rgba(15, 23, 32, 0.55); }

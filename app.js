@@ -917,6 +917,47 @@ function stripTags(html) {
   return div.textContent || "";
 }
 
+// What a hit is, from swisstopo's gazetteer label ("Alpiner Gipfel Piz Bernina (GR) - Pontresina").
+// Only terrain names people look for are kept; buildings, cableways, camp sites etc. are dropped.
+const GAZETTEER_TYPES = [
+  { re: /^(Alpiner Gipfel|Hauptgipfel|Nebengipfel|Gipfel)\s+/, kind: "peak", rank: 3, zoom: 7 },
+  { re: /^(Strassenpass|Pass)\s+/, kind: "pass", rank: 4, zoom: 7 },
+  { re: /^(Stausee|See)\s+/, kind: "lake", rank: 5, zoom: 7 },
+  { re: /^Gletscher\s+/, kind: "glacier", rank: 6, zoom: 7 },
+  { re: /^Ort\s+/, kind: "place", rank: 7, zoom: 10 },
+  { re: /^Grat\s+/, kind: "ridge", rank: 8, zoom: 7 },
+  { re: /^Tal\s+/, kind: "valley", rank: 8, zoom: 6 },
+  { re: /^(Flurname swisstopo|Gebiet)\s+/, kind: "name", rank: 9, zoom: 8 },
+];
+const SEARCH_MAX_RESULTS = 8;
+const SEARCH_MAX_ADDRESSES = 2;
+const SEARCH_MAX_MINOR = 2; // ridges, valleys and plain field names
+const SEARCH_MAX_PLACES = 3; // hamlets / localities, so a municipality name does not fill the list with them
+const SEARCH_CANTON = "VS"; // hits in the canton this viewer covers come first within their group
+
+function parseSearchHit(r) {
+  const a = r.attrs;
+  const label = stripTags(a.label);
+  const base = { lat: a.lat, lon: a.lon, label, zoom: 14, name: label, meta: "", rank: 9 };
+  if (a.origin === "gazetteer") {
+    const type = GAZETTEER_TYPES.find((tp) => tp.re.test(label));
+    if (!type) return null;
+    const rest = label.replace(type.re, "");
+    const m = rest.match(/^(.*?)\s*\(([A-Za-z]{2})?\)\s*-\s*(.*)$/);
+    const name = (m ? m[1] : rest).replace(/\s*\|\s*/g, " / ").trim(); // "Matterhorn Mont Cervin|Monte Cervino"
+    const where = m ? [m[3].split(",")[0].trim(), m[2]].filter(Boolean) : [];
+    const place = where.length === 2 ? `${where[0]} (${where[1]})` : where[0] || "";
+    return { ...base, name, label: place ? `${name}, ${place}` : name, zoom: type.zoom, rank: type.rank, gazetteer: true,
+      meta: [t(`search.type.${type.kind}`), place].filter(Boolean).join(" · "), key: `${type.kind}|${name}|${place}` };
+  }
+  const kinds = { gg25: ["search.type.municipality", 0], zipcode: ["search.type.zip", 1], district: ["search.type.district", 2], kantone: ["search.type.canton", 2], address: ["search.type.address", 10] };
+  const k = kinds[a.origin];
+  if (!k) return null;
+  return { ...base, rank: k[1], meta: t(k[0]), key: `${a.origin}|${label}` };
+}
+
+const plain = (x) => x.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
 async function runSearch(query) {
   if (!query || query.length < 2) {
     searchResults.classList.add("hidden");
@@ -924,27 +965,52 @@ async function runSearch(query) {
     return;
   }
   try {
-    const url =
-      "https://api3.geo.admin.ch/rest/services/api/SearchServer?type=locations&limit=8" +
-      "&origins=gg25,address,district,kantone,zipcode&searchText=" +
-      encodeURIComponent(query);
-    const resp = await fetch(url);
-    if (!resp.ok) return;
-    const data = await resp.json();
-    const items = (data.results || []).filter((r) => r.attrs && r.attrs.lat && r.attrs.lon);
+    // two requests: with addresses in the same request they crowd out the gazetteer hits (peaks, passes, lakes ...)
+    // lang=de pins the type words of the hits ("Alpiner Gipfel", "See" ...) that parseSearchHit() recognises,
+    // independent of the browser language
+    const base = "https://api3.geo.admin.ch/rest/services/api/SearchServer?type=locations&lang=de&searchText=" + encodeURIComponent(query);
+    const [places, addrs] = await Promise.all([
+      fetch(base + "&limit=50&origins=gg25,district,kantone,zipcode,gazetteer").then((r) => (r.ok ? r.json() : { results: [] })),
+      fetch(base + "&limit=8&origins=address").then((r) => (r.ok ? r.json() : { results: [] })).catch(() => ({ results: [] })),
+    ]);
+    const data = { results: (places.results || []).concat(addrs.results || []) };
+    const seen = new Set();
+    let addresses = 0, placeCount = 0, minorCount = 0;
+    const q = plain(query.trim()).split(/\s+/)[0];
+    const parsed = (data.results || []).filter((r) => r.attrs && r.attrs.lat && r.attrs.lon).map(parseSearchHit).filter(Boolean);
+    const municipalities = new Set(parsed.filter((h) => h.rank === 0).map((h) => plain(h.name.replace(/\s*\(.*$/, ""))));
+    const items = parsed
+      // the gazetteer also returns every place that merely lies in a matching municipality: keep names that contain the search word,
+      // and skip places that are just the municipality again
+      .filter((h) => !h.gazetteer || (plain(h.name).includes(q) && !(h.rank === 7 && municipalities.has(plain(h.name)))))
+      .filter((h) => (seen.has(h.key) ? false : seen.add(h.key)))
+      .map((h, i) => ({ h, i, own: h.label.includes(`(${SEARCH_CANTON})`) ? 0 : 1 }))
+      .sort((x, y) => x.h.rank - y.h.rank || x.own - y.own || x.i - y.i) // municipalities first, then peaks, passes, lakes ...; addresses last
+      .map((x) => x.h)
+      .filter((h) => (h.rank === 10 ? ++addresses <= SEARCH_MAX_ADDRESSES : h.rank === 7 ? ++placeCount <= SEARCH_MAX_PLACES : h.rank >= 8 ? ++minorCount <= SEARCH_MAX_MINOR : true))
+      .slice(0, SEARCH_MAX_RESULTS);
 
     searchResults.innerHTML = "";
     if (items.length === 0) {
       searchResults.classList.add("hidden");
       return;
     }
-    items.forEach((r) => {
+    items.forEach((h) => {
       const row = document.createElement("div");
       row.className = "search-result";
-      row.textContent = stripTags(r.attrs.label);
+      const name = document.createElement("span");
+      name.className = "sr-name";
+      name.textContent = h.name;
+      row.appendChild(name);
+      if (h.meta) {
+        const meta = document.createElement("span");
+        meta.className = "sr-meta";
+        meta.textContent = h.meta;
+        row.appendChild(meta);
+      }
       row.addEventListener("click", () => {
-        if (state.map) state.map.setView([r.attrs.lat, r.attrs.lon], 14);
-        searchInput.value = stripTags(r.attrs.label);
+        if (state.map) state.map.setView([h.lat, h.lon], h.zoom);
+        searchInput.value = h.label;
         searchResults.classList.add("hidden");
       });
       searchResults.appendChild(row);

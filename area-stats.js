@@ -223,16 +223,33 @@ function renderAreaPanel(res) {
   const c = res.counts;
   const assessable = res.validPx;
 
+  // Pixels without data (outside the canton, on lakes) are not part of the assessment: the shares below refer to
+  // the ground that has data, and the "no data" part is reported separately.
+  const dataPx = total - c.nodata;
+  const dataM2 = dataPx * res.cellM2;
+  const nodataShare = pct(c.nodata, total);
+  const classes = AREA_CLASSES.filter((cl) => cl.id !== "nodata");
+
   const sub = document.createElement("p");
   sub.className = "area-sub";
-  sub.textContent = t("area.size", { area: fmtArea(res.areaM2) });
+  sub.textContent = c.nodata > 0
+    ? t("area.sizeWithData", { area: fmtArea(res.areaM2), data: fmtArea(dataM2) })
+    : t("area.size", { area: fmtArea(res.areaM2) });
   panel.appendChild(sub);
 
-  // stacked bar
+  // area that lies (partly) outside the data, typically at the border: say so explicitly
+  if (nodataShare >= 10 && dataPx > 0) {
+    const hint = document.createElement("p");
+    hint.className = "area-border-hint";
+    hint.textContent = t("area.border", { pct: Math.round(nodataShare) });
+    panel.appendChild(hint);
+  }
+
+  // stacked bar (only the part with data)
   const bar = document.createElement("div");
   bar.className = "area-bar";
-  for (const cl of AREA_CLASSES) {
-    const w = pct(c[cl.id], total);
+  for (const cl of classes) {
+    const w = pct(c[cl.id], dataPx);
     if (w <= 0) continue;
     const seg = document.createElement("span");
     seg.style.width = `${w}%`;
@@ -244,9 +261,9 @@ function renderAreaPanel(res) {
 
   const table = document.createElement("table");
   table.className = "area-table";
-  for (const cl of AREA_CLASSES) {
-    if (cl.id === "nodata" && c.nodata === 0) continue;
+  const addRow = (cl, share, areaM2, muted) => {
     const tr = document.createElement("tr");
+    if (muted) tr.className = "area-nodata-row";
     const dotTd = document.createElement("td");
     const dot = document.createElement("span");
     dot.className = "dot";
@@ -256,18 +273,20 @@ function renderAreaPanel(res) {
     lbl.textContent = t(cl.key);
     const val = document.createElement("td");
     val.className = "num";
-    val.textContent = fmtPct(pct(c[cl.id], total));
+    val.textContent = fmtPct(share);
     const ar = document.createElement("td");
     ar.className = "num muted";
-    ar.textContent = fmtArea(c[cl.id] * res.cellM2);
+    ar.textContent = fmtArea(areaM2);
     tr.append(dotTd, lbl, val, ar);
     table.appendChild(tr);
-  }
+  };
+  for (const cl of classes) addRow(cl, pct(c[cl.id], dataPx), c[cl.id] * res.cellM2, false);
+  if (c.nodata > 0) addRow(AREA_CLASSES.find((cl) => cl.id === "nodata"), nodataShare, c.nodata * res.cellM2, true); // share of the whole polygon
   panel.appendChild(table);
 
   // plain-language summary
-  const good = pct(c.good, total), mid = pct(c.mid, total);
-  const bad = pct(c.bad, total), blocked = pct(c.blocked, total);
+  const good = pct(c.good, dataPx), mid = pct(c.mid, dataPx);
+  const bad = pct(c.bad, dataPx), blocked = pct(c.blocked, dataPx);
   const sum = document.createElement("p");
   sum.className = "area-summary";
   let key;
@@ -323,11 +342,44 @@ function refreshAreaTexts() {
   if (areaState.drawing) setAreaHint(t(areaState.points.length < 3 ? "area.hintDraw" : "area.hintFinish"));
 }
 
+// ---------------------------------------------------------------- dimming outside the area
+//
+// While a polygon is drawn, and as long as its result is shown, everything outside it is dimmed (like in the
+// tutorial) so the assessed ground stands out. The veil is a Leaflet polygon (a huge rectangle with the area cut
+// out) in its own pane between the tiles and the vector layers, so the outline stays crisp on top.
+
+let areaDimLayer = null;
+const AREA_WORLD = [[40, 0], [40, 20], [52, 20], [52, 0]]; // lat/lng box far larger than anything on the map
+
+function setAreaDim(rings) {
+  // rings: null = no veil; [] = veil over everything; [ring, ...] = area(s) cut out (outer rings and holes)
+  if (!rings || (typeof state !== "undefined" && state.tourDemo)) { // the tutorial draws its own spotlight
+    if (areaDimLayer) { state.map.removeLayer(areaDimLayer); areaDimLayer = null; }
+    return;
+  }
+  const latlngs = [AREA_WORLD, ...rings.filter((r) => r.length >= 3)];
+  if (areaDimLayer) { areaDimLayer.setLatLngs(latlngs); return; }
+  if (!state.map.getPane("areaDim")) {
+    const pane = state.map.createPane("areaDim");
+    pane.style.zIndex = 390; // above the tiles (200), below the vector layers (400)
+    pane.style.pointerEvents = "none";
+  }
+  areaDimLayer = L.polygon(latlngs, { pane: "areaDim", stroke: false, fillColor: "#0f1720", fillOpacity: 0.4, interactive: false }).addTo(state.map);
+}
+
+// during drawing: the corners placed so far, plus the cursor
+function updateAreaDim(cursor) {
+  if (!areaState.drawing || !areaState.points.length) return;
+  const ring = areaState.points.concat(cursor ? [cursor] : []);
+  setAreaDim(ring.length >= 3 ? [ring] : []);
+}
+
 // ---------------------------------------------------------------- selection lifecycle
 
 function clearAreaSelection() {
   areaState.token++;
   cancelAreaDrawing();
+  setAreaDim(null);
   if (areaState.polygonLayer) { state.map.removeLayer(areaState.polygonLayer); areaState.polygonLayer = null; }
   areaState.lastResult = null;
   areaState.rings = null;
@@ -341,6 +393,10 @@ async function evaluatePolygons(polys, layer) {
   if (areaState.polygonLayer) state.map.removeLayer(areaState.polygonLayer);
   areaState.polygonLayer = layer.addTo(state.map);
   areaState.rings = polys;
+  setAreaDim(polys.flatMap((p) => [p.outer, ...p.holes]).map((ring) => ring.map((xy) => {
+    const ll = proj4("EPSG:2056", "EPSG:4326", xy);
+    return L.latLng(ll[1], ll[0]);
+  })));
   areaState.lastResult = { pending: true };
   renderAreaPanel(areaState.lastResult);
   try {
@@ -407,6 +463,7 @@ function cancelAreaDrawing() {
   areaState.vertexMarkers = [];
   if (areaState.previewLine) { state.map.removeLayer(areaState.previewLine); areaState.previewLine = null; }
   areaState.points = [];
+  setAreaDim(null);
   setAreaHint(null);
   document.querySelector(".area-control-btn")?.classList.remove("active");
 }
@@ -439,6 +496,7 @@ function onAreaMapClick(e) {
   const m = L.circleMarker(e.latlng, { radius: 5, color: OUTLINE_COLOR, weight: 2.5, fillColor: "#fff", fillOpacity: 1, interactive: false }).addTo(state.map);
   areaState.vertexMarkers.push(m);
   updateAreaPreview(e.latlng);
+  updateAreaDim(e.latlng);
   setAreaHint(areaState.points.length < 3 ? t("area.hintDraw") : t("area.hintFinish"));
   return true;
 }
@@ -546,7 +604,7 @@ function initAreaStats() {
     L.DomEvent.disableScrollPropagation(div);
   }
   initMeasureTool();
-  state.map.on("mousemove", (e) => { if (areaState.drawing && areaState.points.length) updateAreaPreview(e.latlng); });
+  state.map.on("mousemove", (e) => { if (areaState.drawing && areaState.points.length) { updateAreaPreview(e.latlng); updateAreaDim(e.latlng); } });
   state.map.on("dblclick", () => { if (areaState.drawing) finishAreaDrawing(); });
   document.addEventListener("keydown", (e) => {
     if (!areaState.drawing) return;
@@ -558,6 +616,7 @@ function initAreaStats() {
       const m = areaState.vertexMarkers.pop();
       if (m) state.map.removeLayer(m);
       updateAreaPreview(null);
+      if (areaState.points.length) updateAreaDim(null); else setAreaDim([]);
     }
   });
 }
