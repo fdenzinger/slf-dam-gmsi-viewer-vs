@@ -101,6 +101,11 @@ function swissWms(layerName, extraOpts) {
 }
 
 const SWISSTOPO_GRAU = swissWms("ch.swisstopo.pixelkarte-grau", { attribution: "© swisstopo" });
+const SWISSTOPO_FARBE = swissWms("ch.swisstopo.pixelkarte-farbe", { attribution: "© swisstopo" });
+// the classic single-direction hillshade (light from the north-west), plastic and calm behind the GMSI colours
+const SWISSTOPO_ALTI3D_MONO = swissWms("ch.swisstopo.swissalti3d-reliefschattierung_monodirektional", {
+  attribution: "swissALTI3D &copy; swisstopo",
+});
 const SWISSTOPO_SWISSIMAGE = swissWms("ch.swisstopo.swissimage", { attribution: "© swisstopo" });
 // ground (bare terrain) vs surface (incl. vegetation/buildings) hillshades,
 // served on demand from swisstopo instead of shipping a local raster --
@@ -131,6 +136,41 @@ function chooseBasemap(name) {
   });
 }
 
+// Previews for the basemap menu: a small image of the current map section in each basemap, requested from the
+// same swisstopo WMS as the basemaps themselves (without the GMSI layer on top).
+const PREVIEW_W = 112, PREVIEW_H = 72;
+function basemapPreviewUrl(name) {
+  const layer = state.basemaps[name];
+  if (!layer || !state.map) return "";
+  const c = proj4("EPSG:4326", "EPSG:2056", [state.map.getCenter().lng, state.map.getCenter().lat]);
+  const res = 1 / state.map.options.crs.scale(state.map.getZoom()); // metres per pixel of the map
+  const halfW = (state.map.getSize().x * 0.5 * 0.55) * res; // the central ~55 % of the map width
+  const halfH = (halfW * PREVIEW_H) / PREVIEW_W;
+  const bbox = [c[0] - halfW, c[1] - halfH, c[0] + halfW, c[1] + halfH].map((v) => v.toFixed(1)).join(",");
+  return "https://wms.geo.admin.ch/?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&FORMAT=image%2Fjpeg&STYLES=&CRS=EPSG%3A2056" +
+    `&LAYERS=${encodeURIComponent(layer.options.layers)}&BBOX=${bbox}&WIDTH=${PREVIEW_W * 2}&HEIGHT=${PREVIEW_H * 2}`;
+}
+let previewTimer = null;
+function refreshBasemapPreviews() {
+  document.querySelectorAll(".basemap-control-item").forEach((item) => {
+    const img = item.querySelector(".bm-thumb");
+    if (!img) return;
+    const url = basemapPreviewUrl(item.dataset.value);
+    if (url && img.dataset.src !== url) {
+      img.dataset.src = url;
+      img.classList.remove("loaded");
+      img.src = url;
+    }
+  });
+}
+function refreshBasemapPreviewsSoon() {
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(() => {
+    const menu = document.querySelector(".basemap-control-menu");
+    if (menu && !menu.classList.contains("hidden")) refreshBasemapPreviews();
+  }, 250);
+}
+
 // small Leaflet control (bottom-left, like the classic basemap-switcher
 // pattern) so the basemap can be changed without opening the sidebar
 const BasemapControl = L.Control.extend({
@@ -152,14 +192,21 @@ const BasemapControl = L.Control.extend({
     const menu = L.DomUtil.create("div", "basemap-control-menu hidden", container);
     const options = [
       { value: "grau", key: "basemap.grau" },
+      { value: "farbe", key: "basemap.farbe" },
       { value: "swissimage", key: "basemap.swissimage" },
       { value: "alti3d", key: "basemap.alti3d" },
+      { value: "alti3dmono", key: "basemap.alti3dmono" },
       { value: "surface3d", key: "basemap.surface3d" },
     ];
     options.forEach((opt) => {
       const item = L.DomUtil.create("div", "basemap-control-item", menu);
-      item.textContent = t(opt.key);
-      item.dataset.i18n = opt.key; // keeps the label current across setLang()
+      const thumb = L.DomUtil.create("img", "bm-thumb", item);
+      thumb.alt = "";
+      thumb.width = PREVIEW_W; thumb.height = PREVIEW_H;
+      thumb.addEventListener("load", () => thumb.classList.add("loaded"));
+      const label = L.DomUtil.create("span", "bm-label", item);
+      label.textContent = t(opt.key);
+      label.dataset.i18n = opt.key; // keeps the label current across setLang()
       item.dataset.value = opt.value;
       item.classList.toggle("active", opt.value === state.currentBasemap);
       item.addEventListener("click", () => {
@@ -173,7 +220,10 @@ const BasemapControl = L.Control.extend({
     button.addEventListener("click", (e) => {
       e.preventDefault();
       menu.classList.toggle("hidden");
+      if (!menu.classList.contains("hidden")) refreshBasemapPreviews();
     });
+    // the previews follow the map while the menu is open
+    if (typeof state !== "undefined" && state.map) state.map.on("moveend", refreshBasemapPreviewsSoon);
     return container;
   },
 });
@@ -292,7 +342,7 @@ function setLayerOpacity(file, opacity) {
   en.opacity = opacity;
   if (en.leafletLayer) en.leafletLayer.setOpacity(opacity);
   if (en.sliderEl) {
-    en.sliderEl.value = String(Math.round((1 - opacity) * 100));
+    en.sliderEl.value = String(Math.round(opacity * 100));
     en.sliderEl.dispatchEvent(new Event("input")); // refreshes the % label
   }
 }
@@ -623,6 +673,8 @@ async function loadProject(fileList, options = {}) {
   );
 
   state.basemaps.grau = SWISSTOPO_GRAU;
+  state.basemaps.farbe = SWISSTOPO_FARBE;
+  state.basemaps.alti3dmono = SWISSTOPO_ALTI3D_MONO;
   state.basemaps.swissimage = SWISSTOPO_SWISSIMAGE;
   state.basemaps.alti3d = SWISSTOPO_ALTI3D_HILLSHADE;
   state.basemaps.surface3d = SWISSTOPO_SURFACE3D_HILLSHADE;
@@ -744,6 +796,16 @@ function buildSidebar() {
     const title = document.createElement("div");
     title.className = "layer-group-title";
     title.textContent = groupLabel(g);
+    // groups fold away on click, so the long list of single tracks does not fill the whole sidebar
+    title.setAttribute("role", "button");
+    title.tabIndex = 0;
+    title.setAttribute("aria-expanded", "true");
+    const toggleGroup = () => {
+      const collapsed = groupDiv.classList.toggle("collapsed");
+      title.setAttribute("aria-expanded", String(!collapsed));
+    };
+    title.addEventListener("click", toggleGroup);
+    title.addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); toggleGroup(); } });
     groupDiv.appendChild(title);
 
     groups[g].forEach(({ file, manifest, checked }) => {
@@ -793,14 +855,14 @@ function buildSidebar() {
       opLabel.textContent = t("sidebar.opacity");
       const slider = document.createElement("input");
       slider.type = "range";
-      slider.min = "0"; slider.max = "100"; slider.step = "5";
-      slider.value = String(Math.round((1 - defaultOpacity) * 100));
+      slider.min = "5"; slider.max = "100"; slider.step = "5"; // opacity in %
+      slider.value = String(Math.round(defaultOpacity * 100));
       slider.setAttribute("aria-label", t("sidebar.opacityAria", { label: displayLabel }));
       const opValue = document.createElement("span");
       opValue.className = "opacity-value";
       opValue.textContent = `${slider.value} %`;
       slider.addEventListener("input", () => {
-        const opacity = 1 - Number(slider.value) / 100;
+        const opacity = Number(slider.value) / 100;
         opValue.textContent = `${slider.value} %`;
         const e = state.layers[file];
         e.opacity = opacity;

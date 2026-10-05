@@ -47,7 +47,7 @@
   // ---- live demos for the "point" and "area" steps: the tour does what the visitor would do
 
   const DEMOS = {
-    GR: { place: "Piz Buin Pitschen", point: [2803925, 1191324], polygon: [[2802950, 1191780], [2803250, 1191390], [2803500, 1191250], [2803950, 1191340], [2804400, 1191590], [2804700, 1192050], [2805400, 1191990], [2806000, 1190050], [2805100, 1189850], [2803900, 1190300], [2803100, 1190900]] }, // along the border from the west of Piz Buin Pitschen, down to the Chamonna Tuoi, with Cronsel
+    GR: { place: "Piz Buin Pitschen", measure: [[2803920, 1191369], [2804774, 1190666], [2805491, 1190153]], point: [2803925, 1191324], polygon: [[2803149, 1190821], [2803462, 1191261], [2804436, 1191604], [2804506, 1191946], [2804912, 1192036], [2805949, 1192011], [2806266, 1190576], [2806049, 1190004], [2805682, 1189738], [2804944, 1190211], [2804012, 1189928], [2803174, 1190141]] }, // Piz Buin Pitschen / Piz Mon, over Cronsel, down to the Chamonna Tuoi
     VS: { place: "Breithorn", pick: "St. Niklaus", point: [2630505, 1110165], polygon: [[2629150, 1110300], [2630050, 1110550], [2630900, 1110250], [2630950, 1109450], [2630450, 1109000], [2629250, 1109000], [2629000, 1109700]] }, // Breithorn / Längenschnee above St. Niklaus
   };
   // switch a layer with its real checkbox; the first change of each layer is remembered so the tour can put it back
@@ -156,7 +156,7 @@
       if (phase === "result") return popupRect() || spotRect();
       return firstRect(".track-compare-btn") || popupRect() || spotRect();
     }
-    if (phase === "tool") { const r = firstRect(".area-control-btn"); if (r) return r; }
+    if (phase === "tool" || !phase) { const r = firstRect(".area-control-btn"); if (r) return r; } // the step starts on the tool, not on the polygon's bounding box
     if (phase === "result") { const r = firstRect("#area-panel:not(.hidden)", 40); if (r) return r; }
     const pts = polygonPagePoints();
     const xs = pts.map((q) => q[0]), ys = pts.map((q) => q[1]);
@@ -315,6 +315,7 @@
     if (!tour.demoActive) return;
     tour.demoActive = false;
     state.tourDemo = false;
+    state.tourDrawing = false;
     if (typeof cancelAreaDrawing === "function") cancelAreaDrawing();
     if (typeof clearAreaSelection === "function") clearAreaSelection();
     if (state.summaryPopup) state.map.closePopup(state.summaryPopup);
@@ -326,7 +327,15 @@
     const cfg = demoCfg(), cursor = ensureCursor(), quick = reduced();
     tour.demoActive = true;
     state.tourDemo = true; // app.js: always offer the "compare all tracks" button, even if the tracks are already loaded
-    const setPhase = (ph) => { tour.demoPhase = ph; reposition(); };
+    const setPhase = (ph) => {
+      tour.demoPhase = ph;
+      if (kind === "area") {
+        // drawing: the tour's own spotlight; result: the same dimmed-outside look as in normal use
+        state.tourDrawing = ph === "tool" || ph === "draw";
+        if (ph === "result" && typeof refreshAreaDim === "function") refreshAreaDim();
+      }
+      reposition();
+    };
     const centre = (r) => [r.left + r.width / 2, r.top + r.height / 2];
     const place = (xy, ms) => {
       cursor.style.transitionDuration = ms + "ms";
@@ -339,11 +348,11 @@
       cursor.classList.add("show");
       await sleep(quick ? 0 : 450);
     };
-    const click = async () => {
+    const click = async (ms = 400) => {
       cursor.classList.remove("click");
       void cursor.offsetWidth; // restart the ripple animation
       cursor.classList.add("click");
-      await sleep(quick ? 0 : 400);
+      await sleep(quick ? 0 : ms);
     };
     const waitFor = async (fn, ms) => {
       const t0 = Date.now();
@@ -479,7 +488,8 @@
       setPhase("draw");
       const poly = cfg.polygon.map(demoLatLng);
       const n = poly.length;
-      const path = [0, Math.floor(n * 0.25), Math.floor(n * 0.5), Math.floor(n * 0.75)].map((k) => poly[k]); // spread over the demo area
+      // GR: from the Kleiner Piz Buin over Cronsel down to the Chamonna Tuoi; otherwise spread over the demo area
+      const path = cfg.measure ? cfg.measure.map(demoLatLng) : [0, Math.floor(n * 0.25), Math.floor(n * 0.5), Math.floor(n * 0.75)].map((k) => poly[k]);
       tour.measurePts = [];
       for (let i = 0; i < path.length; i++) {
         const pt = demoPagePoint(path[i]);
@@ -529,7 +539,7 @@
       if (!sl || !rectOf(sl)) return;
       tour.sliderOrig = { el: sl, value: sl.value };
       const sr = rectOf(sl), at = (v) => [sr.left + 8 + ((sr.width - 16) * v) / 100, sr.top + sr.height / 2];
-      const from = Number(sl.value), to = 80;
+      const from = Number(sl.value), to = 20; // opacity in %: down to 20 % shows the basemap through the layer
       await place(at(from), quick ? 0 : 700);
       if (!alive()) return;
       await click();
@@ -552,7 +562,7 @@
       const plan = kind === "layer" ? [[comp, false], [manifestFileOf("_best_orbit.tif"), true]]
         : kind === "tracks" ? [[comp, false], [gmsiA, true]]
         : [[comp, false], [gmsiA, false], [shadowA, true]]; // the track's GMSI goes off, so the grey of the shadow layer stands out
-      tour.demoFiles = kind === "layer" ? [comp, manifestFileOf("_best_orbit.tif")] : kind === "tracks" ? [comp, gmsiA] : [gmsiA, shadowA];
+      tour.demoFiles = kind === "layer" ? [manifestFileOf("_best_orbit.tif")] : kind === "tracks" ? [gmsiA] : [shadowA]; // only the layer the step is about is highlighted
       setPhase("layers");
       let started = false;
       for (const [file, on] of plan) {
@@ -622,6 +632,7 @@
       if (!alive()) return;
       tour.prevBasemap = state.currentBasemap;
       document.querySelector(BASE_CTRL + " .basemap-control-menu").classList.remove("hidden"); // what the button does
+      if (typeof refreshBasemapPreviews === "function") refreshBasemapPreviews();
       setPhase("menu");
       const item = document.querySelector(BASE_CTRL + ' .basemap-control-item[data-value="swissimage"]');
       const c1 = centre(rectOf(item));
@@ -692,17 +703,17 @@
       })();
       const pts = cfg.polygon.map(demoLatLng);
       for (let i = 0; i < pts.length; i++) {
-        await place(demoPagePoint(pts[i]), quick ? 0 : 650);
+        await place(demoPagePoint(pts[i]), quick ? 0 : 260);
         if (!alive()) return;
-        await click();
+        await click(120);
         if (!alive()) return;
         tour.drawPts.push(demoPagePoint(pts[i]));
         onAreaMapClick({ latlng: pts[i] });
       }
       // a click on the first corner closes the area, as for a visitor
-      await place(demoPagePoint(pts[0]), quick ? 0 : 650);
+      await place(demoPagePoint(pts[0]), quick ? 0 : 320);
       if (!alive()) return;
-      await click();
+      await click(120);
       if (!alive()) return;
       tour.cursorLive = false; // closed: the full polygon stays bright until the result window takes over
       onAreaMapClick({ latlng: pts[0] });
@@ -776,12 +787,16 @@
   function placePopover(rect, step) {
     const { pop, spot } = tour.els;
     spot.classList.toggle("light", !!(step && step.demo)); // demos need the map visible, so dim less
+    // area result: the polygon is already dimmed around by the app; the box around the result window is only a ring
+    spot.classList.toggle("ring", !!(step && step.demo === "area" && tour.demoPhase === "result"));
     setShape(step && step.demo === "area" && tour.demoPhase === "draw" ? liveDrawPoints() : null);
     // measure demo: highlight the line itself instead of a box around it
     const lineMode = !!(step && step.demo === "measure" && (tour.demoPhase === "draw" || tour.demoPhase === "result"));
     setLineShape(lineMode ? (typeof measureState !== "undefined" ? measureState.points : []).map(demoPagePoint) : null,
       lineMode && tour.demoPhase === "result" ? firstRect(".measure-label-total") : null);
     if (lineMode) spot.style.visibility = "hidden";
+    // point demo: no box around the spot to click on (the click ripple shows where); the box appears around the result window
+    if (step && step.demo === "point" && tour.demoPhase !== "result") spot.style.visibility = "hidden";
     const pad = 6;
     if (tour.firstPlace) { // first step after start: appear in place instead of flying in from the corner
       spot.style.transition = "none";
@@ -889,6 +904,8 @@
     );
     tour.index = i;
     const step = STEPS[i];
+    // a step with a demo first moves the map; the previous step's box must not hang around (or jump) until it is placed
+    if (step.demo && tour.els) tour.els.spot.style.visibility = "hidden";
     // layer steps need a specific mode; the others show the app as the visitor had it
     const wantMode = step.mode || (tour.snapshot && tour.snapshot.mode);
     if (wantMode && typeof setMode === "function" && state.mode !== wantMode) {

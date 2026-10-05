@@ -353,7 +353,7 @@ const AREA_WORLD = [[40, 0], [40, 20], [52, 20], [52, 0]]; // lat/lng box far la
 
 function setAreaDim(rings) {
   // rings: null = no veil; [] = veil over everything; [ring, ...] = area(s) cut out (outer rings and holes)
-  if (!rings || (typeof state !== "undefined" && state.tourDemo)) { // the tutorial draws its own spotlight
+  if (!rings || (typeof state !== "undefined" && state.tourDrawing)) { // while the tutorial draws, it paints its own spotlight
     if (areaDimLayer) { state.map.removeLayer(areaDimLayer); areaDimLayer = null; }
     return;
   }
@@ -365,6 +365,15 @@ function setAreaDim(rings) {
     pane.style.pointerEvents = "none";
   }
   areaDimLayer = L.polygon(latlngs, { pane: "areaDim", stroke: false, fillColor: "#0f1720", fillOpacity: 0.4, interactive: false }).addTo(state.map);
+}
+
+// re-applies the veil for the finished area (the tutorial calls this when its own spotlight hands over)
+function refreshAreaDim() {
+  if (!areaState.rings) return;
+  setAreaDim(areaState.rings.flatMap((p) => [p.outer, ...p.holes]).map((ring) => ring.map((xy) => {
+    const ll = proj4("EPSG:2056", "EPSG:4326", xy);
+    return L.latLng(ll[1], ll[0]);
+  })));
 }
 
 // during drawing: the corners placed so far, plus the cursor
