@@ -315,13 +315,14 @@ html, body {
 
 /* ---------------- info button + modal ---------------- */
 
-#info-modal {
+#info-modal,
+#about-modal {
   position: fixed; inset: 0; z-index: 999999;
   background: rgba(20, 25, 30, 0.55);
   overflow-y: auto;
   padding: 40px 24px;
-}
-#info-modal-box {
+}#info-modal-box,
+#about-modal-box {
   position: relative;
   background: #ffffff;
   color: var(--text);
@@ -331,8 +332,8 @@ html, body {
   padding: 32px 36px;
   box-shadow: 0 12px 40px rgba(0,0,0,0.3);
   z-index: 1;
-}
-#info-modal-close {
+}#info-modal-close,
+#about-modal-close {
   position: absolute;
   top: 14px; right: 14px;
   width: 30px; height: 30px;
@@ -342,31 +343,35 @@ html, body {
   font-size: 15px;
   cursor: pointer;
   color: #444;
-}
-#info-modal-close:hover { background: #ddd; }
-#info-modal-box h2 {
+}#info-modal-close:hover,
+#about-modal-close:hover { background: #ddd; }#info-modal-box h2,
+#about-modal-box h2 {
   font-size: 15px;
   color: var(--slf-blue);
   margin: 22px 0 8px;
-}
-#info-modal-box h2:first-child { margin-top: 0; }
-#info-modal-box p, #info-modal-box li {
+}#info-modal-box h2:first-child,
+#about-modal-box h2:first-child { margin-top: 0; }#info-modal-box p,
+#about-modal-box p,
+#info-modal-box li,
+#about-modal-box li {
   font-size: 14px;
   line-height: 1.5;
   color: var(--text);
-}
-#info-modal-box ul, #info-modal-box ol {
+}#info-modal-box ul,
+#about-modal-box ul,
+#info-modal-box ol,
+#about-modal-box ol {
   margin: 6px 0;
   padding-left: 22px;
-}
-#info-modal-box li { margin-bottom: 6px; }
-#info-modal-box .dot {
+}#info-modal-box li,
+#about-modal-box li { margin-bottom: 6px; }#info-modal-box .dot,
+#about-modal-box .dot {
   display: inline-block;
   width: 10px; height: 10px;
   border-radius: 2px;
   margin-right: 4px;
-}
-#info-modal-box .source {
+}#info-modal-box .source,
+#about-modal-box .source {
   margin-top: 24px;
   padding-top: 12px;
   border-top: 1px solid var(--border);
@@ -705,3 +710,48 @@ body:not(.tour-active) #tour-line { display: none !important; }
 .terrain-line { margin: 0; font-size: 12.5px; font-weight: 400; color: #334155; }
 .terrain-hint { margin: 3px 0 0; font-size: 11.5px; line-height: 1.35; color: #64748b; }
 .legend-source { margin-top: 4px; font-size: 10.5px; line-height: 1.3; color: #94a3b8; }
+
+/* sidebar footer: feedback and imprint */
+#sb-links { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-bottom: 8px; }
+#sb-links a, #sb-links button {
+  background: none; border: none; padding: 0; margin: 0; font: inherit; font-size: 12.5px;
+  color: #0072b2; cursor: pointer; text-decoration: none;
+}
+#sb-links a:hover, #sb-links button:hover { text-decoration: underline; }
+#sb-links a:focus-visible, #sb-links button:focus-visible { outline: 2px solid #0072b2; outline-offset: 2px; border-radius: 3px; }
+#about-modal-box a { color: #0072b2; }
+
+/* short introduction card: what the GMSI is, visible from the start */
+#intro {
+  position: relative;
+  margin: 0 0 12px;
+  padding: 10px 28px 10px 12px;
+  background: #eaf3fa;
+  border-left: 3px solid #0072b2;
+  border-radius: 8px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: #1e3a52;
+}
+#intro p { margin: 0 0 8px; }
+#intro em { font-style: normal; font-weight: 600; }
+#intro-hide {
+  position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; padding: 0;
+  border: none; background: none; color: #5b7a94; font-size: 12px; cursor: pointer; border-radius: 50%;
+}
+#intro-hide:hover { background: rgba(0, 114, 178, 0.12); color: #0072b2; }
+.intro-actions { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.intro-actions button {
+  background: none; border: none; padding: 0; font: inherit; font-size: 12.5px; font-weight: 600;
+  color: #0072b2; cursor: pointer;
+}
+.intro-actions button:hover { text-decoration: underline; }
+#intro.hidden { display: none; }
+#intro-collapsed {
+  display: flex; align-items: center; gap: 6px; width: 100%;
+  margin: 0 0 12px; padding: 6px 10px;
+  background: #eaf3fa; border: none; border-left: 3px solid #0072b2; border-radius: 8px;
+  font: inherit; font-size: 12.5px; font-weight: 600; color: #0072b2; cursor: pointer; text-align: left;
+}
+#intro-collapsed:hover { background: #dcecf7; }
+#intro-collapsed.hidden { display: none; }

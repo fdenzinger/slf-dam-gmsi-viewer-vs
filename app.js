@@ -100,6 +100,18 @@ function swissWms(layerName, extraOpts) {
   }, extraOpts || {}));
 }
 
+// an overlay from swisstopo's WMS (transparent PNG tiles) that blends with the basemap like the GMSI layers
+function makeWmsOverlay(manifest) {
+  const layer = swissWms(manifest.wms, {
+    transparent: true,
+    zIndex: 10,
+    opacity: defaultOpacityForKind(manifest.kind),
+    attribution: manifest.attribution || "&copy; swisstopo",
+  });
+  layer.on("add", () => L.DomUtil.addClass(layer.getContainer(), "gmsi-multiply-layer"));
+  return layer;
+}
+
 const SWISSTOPO_GRAU = swissWms("ch.swisstopo.pixelkarte-grau", { attribution: "© swisstopo" });
 const SWISSTOPO_FARBE = swissWms("ch.swisstopo.pixelkarte-farbe", { attribution: "© swisstopo" });
 // the classic single-direction hillshade (light from the north-west), plastic and calm behind the GMSI colours
@@ -786,8 +798,10 @@ async function loadLazyLayer(file) {
   entry.loading = true;
   if (entry.statusEl) entry.statusEl.textContent = t("load.layerLoading");
   try {
-    const rasterFile = await entry.lazyFetch();
-    const { layer } = await makeGeoTiffLayer(rasterFile, entry.manifest.kind);
+    // swisstopo overlays are tile layers from the WMS, everything else is a GeoTIFF
+    const layer = entry.manifest.wms
+      ? makeWmsOverlay(entry.manifest)
+      : (await makeGeoTiffLayer(await entry.lazyFetch(), entry.manifest.kind)).layer;
     entry.leafletLayer = layer;
     if (entry.opacity != null) layer.setOpacity(entry.opacity); // slider moved before the layer finished loading
     if (entry.statusEl) entry.statusEl.textContent = "";
@@ -929,6 +943,8 @@ function swatchColorFor(manifest) {
   if (manifest.kind === "orbit") return "linear-gradient(90deg,#3C7AA9,#5ACDEE,#4FAE62,#F36976,#CEB848)";
   if (manifest.kind === "gmsi") return "#5B9BCB";
   if (manifest.kind === "shadow") return "#5A5A5A";
+  if (manifest.kind === "glacier") return "linear-gradient(90deg,#004DA8,#0078FF,#73DFFF,#BEFFE8)";
+  if (manifest.kind === "slope") return "linear-gradient(90deg,#F2E50A,#F46F24,#DE055B,#C889BB,#4B4B4B)";
   if (manifest.kind === "permafrost") return "linear-gradient(90deg,#7A8DB8,#7BAEFF,#7DDFFF,#B6EEFF,#FFFF80)";
   return "#999";
 }
@@ -952,6 +968,8 @@ function updateLegend() {
   if (visibleKinds.has("gmsi")) legend.appendChild(legendBlock(t("legend.gmsiTitle"), gmsiLegend()));
   if (visibleKinds.has("orbit")) legend.appendChild(legendBlock(t("legend.trackTitle"), bestOrbitLegend()));
   if (visibleKinds.has("shadow")) legend.appendChild(legendBlock(t("legend.shadowTitle"), shadowLegend()));
+  if (visibleKinds.has("glacier")) legend.appendChild(legendBlock(t("legend.glacierTitle"), glacierLegend(), t("legend.glacierSource")));
+  if (visibleKinds.has("slope")) legend.appendChild(legendBlock(t("legend.slopeTitle"), slopeLegend(), t("legend.slopeSource")));
   if (visibleKinds.has("permafrost")) legend.appendChild(legendBlock(t("legend.permafrostTitle"), permafrostLegend(), t("legend.permafrostSource")));
 }
 
@@ -1160,6 +1178,7 @@ function onLangChange() {
   if (!state.map) return; // language switched before data finished loading
   if (state.summaryPopup) state.map.closePopup(state.summaryPopup);
   refreshAreaTexts();
+  if (!aboutModal.classList.contains("hidden")) renderAbout();
   if (typeof refreshTourTexts === "function") refreshTourTexts();
   buildSidebar();
   // re-applies the Standard/Erweitert group visibility (buildSidebar()
@@ -1167,6 +1186,55 @@ function onLangChange() {
   // lost) and ends by calling updateLegend() itself
   setMode(state.mode);
 }
+
+// ---------------- feedback link and imprint / data status
+const FEEDBACK_EMAIL = "florian.denzinger@slf.ch";
+const APP_BUILD = "2026-10-08"; // update when the viewer or its data change
+
+document.getElementById("feedback-link").addEventListener("click", (e) => {
+  // the mail gets the current view (map section, layers, spot) so a report can be reproduced
+  writeHash();
+  const body = `${t("feedback.body")}\n\n\n---\n${t("feedback.view")}: ${location.href}\n${APP_BUILD}`;
+  e.currentTarget.href = `mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent(t("app.title") + " – " + t("feedback.subject"))}&body=${encodeURIComponent(body)}`;
+});
+
+const aboutModal = document.getElementById("about-modal");
+function renderAbout() {
+  document.getElementById("about-content").innerHTML =
+    `<h2>${t("about.title")}</h2>` +
+    `<p>${t("about.dev")}</p>` +
+    `<p>${t("about.contact")} <a href="mailto:${FEEDBACK_EMAIL}">${FEEDBACK_EMAIL}</a>.</p>` +
+    `<h2>${t("about.dataH")}</h2><ul>` +
+    `<li>${t("about.gmsi")}</li>` +
+    `<li>${t("about.record")} <a href="https://zenodo.org/records/${ZENODO_RECORD_ID}" target="_blank" rel="noopener">${ZENODO_RECORD_ID}</a>.</li>` +
+    `<li>${t("about.permafrost")}</li><li>${t("about.swisstopo")}</li>` +
+    `<li>${t("about.app")} ${APP_BUILD}</li></ul>` +
+    `<h2>${t("about.legalH")}</h2><p>${t("about.legal")}</p>`;
+}
+document.getElementById("about-btn").addEventListener("click", () => { renderAbout(); aboutModal.classList.remove("hidden"); });
+document.getElementById("about-modal-close").addEventListener("click", () => aboutModal.classList.add("hidden"));
+aboutModal.addEventListener("click", (e) => { if (e.target === aboutModal) aboutModal.classList.add("hidden"); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") aboutModal.classList.add("hidden"); });
+
+// ---------------- short introduction at the top of the sidebar: can be folded to a one-line bar and opened again
+// (the choice is remembered in the browser)
+(function () {
+  const box = document.getElementById("intro"), bar = document.getElementById("intro-collapsed");
+  const KEY = "gmsi-intro-hidden";
+  const stored = () => { try { return localStorage.getItem(KEY) === "1"; } catch (e) { return false; } };
+  const show = (open) => {
+    box.classList.toggle("hidden", !open);
+    bar.classList.toggle("hidden", open);
+    try { localStorage.setItem(KEY, open ? "0" : "1"); } catch (e) { /* private mode: it just shows again next time */ }
+  };
+  const initial = !stored();
+  box.classList.toggle("hidden", !initial);
+  bar.classList.toggle("hidden", initial);
+  document.getElementById("intro-hide").addEventListener("click", () => show(false));
+  bar.addEventListener("click", () => show(true));
+  document.getElementById("intro-more").addEventListener("click", () => document.getElementById("info-btn").click());
+  document.getElementById("intro-tour").addEventListener("click", () => document.getElementById("tour-btn").click());
+})();
 
 const infoModal = document.getElementById("info-modal");
 document.getElementById("info-btn").addEventListener("click", () => infoModal.classList.remove("hidden"));
