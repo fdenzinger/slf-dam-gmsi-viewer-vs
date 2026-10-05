@@ -48,7 +48,7 @@
 
   const DEMOS = {
     GR: { place: "Piz Buin Pitschen", point: [2803925, 1191324], polygon: [[2802950, 1191780], [2803250, 1191390], [2803500, 1191250], [2803950, 1191340], [2804400, 1191590], [2804700, 1192050], [2805400, 1191990], [2806000, 1190050], [2805100, 1189850], [2803900, 1190300], [2803100, 1190900]] }, // along the border from the west of Piz Buin Pitschen, down to the Chamonna Tuoi, with Cronsel
-    VS: { place: "Zermatt", point: [2623185, 1095735], polygon: [[2621200, 1094950], [2622900, 1095000], [2623000, 1093750], [2621600, 1093650], [2621150, 1094200]] },
+    VS: { place: "Breithorn", pick: "St. Niklaus", point: [2630505, 1110165], polygon: [[2629150, 1110300], [2630050, 1110550], [2630900, 1110250], [2630950, 1109450], [2630450, 1109000], [2629250, 1109000], [2629000, 1109700]] }, // Breithorn / Längenschnee above St. Niklaus
   };
   // switch a layer with its real checkbox; the first change of each layer is remembered so the tour can put it back
   function tickLayer(file, on) {
@@ -591,7 +591,12 @@
         await sleep(quick ? 0 : 130);
         if (!alive()) return;
       }
-      const row = await waitFor(() => res.children.length && !res.classList.contains("hidden") && res.firstElementChild, 10000);
+      const rowOf = () => {
+        if (!res.children.length || res.classList.contains("hidden")) return null;
+        // several places share a name (Breithorn): take the one the demo is about
+        return (cfg.pick && [...res.children].find((r) => r.textContent.includes(cfg.pick))) || res.firstElementChild;
+      };
+      const row = await waitFor(rowOf, 10000);
       if (!alive() || !row) return;
       setPhase("results");
       await sleep(quick ? 0 : 700);
