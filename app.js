@@ -420,27 +420,33 @@ async function fetchHeight(x, y) {
   }
 }
 
-async function buildTrackComparison(latlng, token, container) {
-  container.textContent = t("summary.loadingAllTracks");
-  if (state.summaryPopup) state.summaryPopup.update();
+// loads the per-track rasters (on demand) and reads the value of every track at a spot; null if another spot was clicked meanwhile
+async function collectTrackRows(latlng, token) {
   // open all per-track files in parallel (only headers, a few requests each)
   await Promise.all(
-    TRACKS_VS.flatMap((track) => [`GMSI_VS_${track}.tif`, `GMSI_VS_shadow_layover_${track}.tif`])
+    TRACKS_GR.flatMap((track) => [`GMSI_VS_${track}.tif`, `GMSI_VS_shadow_layover_${track}.tif`])
       .filter((f) => state.layers[f])
       .map((f) => loadLazyLayer(f))
   );
   const rows = [];
-  for (const track of TRACKS_VS) {
+  for (const track of TRACKS_GR) {
     const gEntry = state.layers[`GMSI_VS_${track}.tif`];
     const sEntry = state.layers[`GMSI_VS_shadow_layover_${track}.tif`];
     if (!gEntry) continue;
-    if (token !== state.summaryToken) return; // another spot was clicked meanwhile
+    if (token !== undefined && token !== state.summaryToken) return null;
     const g = gEntry.leafletLayer ? await readRasterValue(gEntry.leafletLayer, latlng) : null;
     const sh = sEntry && sEntry.leafletLayer ? await readRasterValue(sEntry.leafletLayer, latlng) : null;
     rows.push({ track, g, geometryBlocked: sh === 5 || sh === 17 || sh === 21 });
   }
-  if (token !== state.summaryToken) return;
+  return rows;
+}
 
+async function buildTrackComparison(latlng, token, container) {
+  container.textContent = t("summary.loadingAllTracks");
+  if (state.summaryPopup) state.summaryPopup.update();
+  const rows = await collectTrackRows(latlng, token);
+  if (!rows || token !== state.summaryToken) return;
+  if (state.lastSite) state.lastSite.rows = rows; // for the export
   container.textContent = "";
   const table = el("table", "track-table");
   const head = el("tr");
@@ -503,6 +509,8 @@ async function showSiteSummary(latlng) {
   box.appendChild(el("p", "verdict-text", verdict.text));
 
   const track = ov !== null ? ORBIT_INDEX_ORDER[Math.round(ov)] : null;
+  // what the export needs from this query
+  state.lastSite = { latlng, x, y, cv, verdict, bestTrack: track && TRACK_INFO[track] ? `${track} (${TRACK_INFO[track].richtung})` : "", height: null, rows: null };
   if (track && TRACK_INFO[track]) {
     const p = el("p", "best-track");
     p.appendChild(el("strong", "", t("summary.bestTrack")));
@@ -537,10 +545,12 @@ async function showSiteSummary(latlng) {
   const fmt = (n) => Math.round(n).toLocaleString("de-CH");
   foot.textContent = `LV95 E ${fmt(x)} / N ${fmt(y)}`;
   heightPromise.then((h) => {
+    if (h !== null && state.lastSite && state.lastSite.latlng === latlng) state.lastSite.height = h;
     if (h !== null) foot.textContent += ` · ${h}${t("summary.elevation")}`;
     popup.update();
   });
   box.appendChild(el("p", "site-note", t("summary.note")));
+  if (typeof makeExportRow === "function") box.appendChild(makeExportRow("point"));
 
   popup.setContent(box);
 }

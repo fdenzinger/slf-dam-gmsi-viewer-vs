@@ -327,6 +327,8 @@ function renderAreaPanel(res) {
     panel.appendChild(tb);
   }
 
+  if (typeof makeExportRow === "function" && !res.pending) panel.appendChild(makeExportRow("area"));
+
   const note = document.createElement("p");
   note.className = "area-note";
   note.textContent = res.approximate

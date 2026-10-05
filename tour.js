@@ -34,6 +34,7 @@
     { id: "point", sel: ["#map"], ui: "map", center: true, demo: "point" },
     { id: "compare", sel: ["#map"], ui: "map", center: true, demo: "compare" },
     { id: "area", sel: [".area-control"], ui: "map", demo: "area" },
+    { id: "export", sel: [".area-control"], ui: "map", demo: "export" },
     { id: "measure", sel: [".measure-control-btn"], ui: "map", demo: "measure" },
     { id: "base", sel: [BASE_CTRL], ui: "map", demo: "base" },
     { id: "share", sel: [SHARE_CTRL], ui: "map", demo: "share" },
@@ -113,6 +114,7 @@
   function demoRect(kind) {
     const phase = tour.demoPhase;
     if (kind === "sidebar") return firstRect("#sidebar-toggle");
+    if (kind === "export") return firstRect("#area-panel:not(.hidden) .export-row") || firstRect(".area-control");
     if (kind === "zoom") return tour.demoPhase === "pan" ? firstRect("#map") : firstRect(".leaflet-control-zoom");
     if (kind === "modes") return firstRect("#mode-toggle");
     if (kind === "measure") {
@@ -238,7 +240,7 @@
   }
 
   async function prepareDemoView(kind) {
-    if (kind === "base" || kind === "share" || kind === "search" || kind === "layer" || kind === "tracks" || kind === "shadow" || kind === "toggle" || kind === "sidebar" || kind === "zoom" || kind === "modes") return; // these demos use the controls, the map stays where it is
+    if (kind === "base" || kind === "share" || kind === "search" || kind === "layer" || kind === "tracks" || kind === "shadow" || kind === "toggle" || kind === "sidebar" || kind === "zoom" || kind === "modes" || kind === "export") return; // these demos use the controls, the map stays where it is
     const map = state.map, cfg = demoCfg(), animate = !reduced();
     if (!tour.mapView) tour.mapView = { center: map.getCenter(), zoom: map.getZoom() };
     map.invalidateSize();
@@ -471,6 +473,24 @@
       setPhase("buttons");
       await sleep(quick ? 0 : 300);
       await press(zout, 2);
+    } else if (kind === "export") {
+      // the result window of the previous step is still open: point at the export buttons one after the other
+      // (no real download is started)
+      setPhase("row");
+      const btns = [...document.querySelectorAll("#area-panel .export-btn")];
+      if (!btns.length) return;
+      const c0 = centre(rectOf(btns[0]));
+      await startAt(c0);
+      for (const b of btns) {
+        if (!alive()) return;
+        await place(centre(rectOf(b)), quick ? 0 : 650);
+        await sleep(quick ? 0 : 450);
+      }
+      hideCursor();
+      const follow = () => { if (alive()) reposition(); };
+      state.map.on("move moveend", follow);
+      for (let k = 0; k < 20 && alive(); k++) { await sleep(250); reposition(); }
+      state.map.off("move moveend", follow);
     } else if (kind === "modes") {
       const bx = document.getElementById("mode-expert"), bs = document.getElementById("mode-easy");
       if (!bx || !bs) return;
@@ -919,7 +939,8 @@
     // whatever the previous step demonstrated goes away first (the compare step reuses the point step's popup)
     const forward = i === tour.index + 1;
     clearDemo(
-      !!(STEPS[i].demo === "compare" && prevStep && prevStep.demo === "point" && forward),
+      !!((STEPS[i].demo === "compare" && prevStep && prevStep.demo === "point" && forward) ||
+         (STEPS[i].demo === "export" && prevStep && prevStep.demo === "area" && forward)), // these steps carry on with the window the previous step opened
       !!(STEPS[i].demo === "shadow" && prevStep && prevStep.demo === "tracks" && forward) // the track layer stays on to show the shadow layer with it
     );
     tour.index = i;
