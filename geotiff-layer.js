@@ -123,7 +123,7 @@ async function makeGeoTiffLayer(source, kind) {
     attribution,
     // Multiply lets the basemap's terrain texture (contours, labels) show
     // through the GMSI classes and the best-orbit tint
-    multiplyBlend: kind === "orbit" || kind === "gmsi",
+    multiplyBlend: kind === "orbit" || kind === "gmsi" || kind === "permafrost",
     // each tile requires an async readRasters() decode (real I/O, not
     // instant); updating continuously *during* the zoom animation just
     // means re-decoding tiles that are about to be discarded anyway, which

@@ -148,5 +148,6 @@ function colorFnForKind(kind) {
 
 // default layer opacity: GMSI classes, the best-track overlay and the shadow/layover layers start at 75 %
 function defaultOpacityForKind(kind) {
-  return kind === "gmsi" || kind === "orbit" || kind === "shadow" || kind === "permafrost" ? 0.75 : 1;
+  if (kind === "permafrost") return 0.9; // Multiply fades light colours, so this layer starts a bit more opaque
+  return kind === "gmsi" || kind === "orbit" || kind === "shadow" ? 0.75 : 1;
 }
