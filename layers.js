@@ -35,8 +35,8 @@ const TRANSPARENT = [0, 0, 0, 0];
 // colours are fully opaque; the 75 % default opacity is applied per layer
 // (see defaultOpacityForKind) so the transparency slider shows the real value
 const GMSI_RED = [215, 25, 28, 255];     // #D7191C
-const GMSI_ORANGE = [253, 184, 99, 255]; // #FDB863
-const GMSI_GREEN = [26, 150, 65, 255];   // #1A9641
+const GMSI_ORANGE = [253, 174, 97, 255]; // #FDAE61
+const GMSI_GREEN = [91, 155, 203, 255];  // #5B9BCB (blue; name kept for the "good" class)
 function gmsiColor(v, nodata) {
   if (v === nodata || v === null || v === undefined || Number.isNaN(v)) return TRANSPARENT;
   // composite flag: inside the canton but no GMSI in any track (layover/shadow) (negative also catches overview averaging)
@@ -47,8 +47,8 @@ function gmsiColor(v, nodata) {
 }
 function gmsiLegend() {
   return [
-    { color: "#1A9641", label: t("legend.gmsi.green") },
-    { color: "#FDB863", label: t("legend.gmsi.yellow") },
+    { color: "#5B9BCB", label: t("legend.gmsi.green") },
+    { color: "#FDAE61", label: t("legend.gmsi.yellow") },
     { color: "#D7191C", label: t("legend.gmsi.red") },
     { color: "#5A5A5A", label: t("legend.gmsi.blocked") },
   ];

@@ -35,8 +35,8 @@ const I18N = {
       "0 (ungeeignet) bis 1 (sehr gut geeignet) und liegt für jeden 10×10&nbsp;Meter grossen " +
       "Bildpunkt vor.",
     "modal.howToRead.h": "Wie ist die Karte zu lesen?",
-    "modal.howToRead.green": "<strong>Grün (GMSI ≥ 0.4):</strong> sehr gute Bedingungen – hier sind gute Radarmessungen wahrscheinlich.",
-    "modal.howToRead.yellow": "<strong>Gelb (GMSI 0.2–0.4):</strong> Messungen sind möglich, Ergebnisse sollten aber mit Vorsicht interpretiert werden.",
+    "modal.howToRead.green": "<strong>Blau (GMSI ≥ 0.4):</strong> sehr gute Bedingungen – hier sind gute Radarmessungen wahrscheinlich.",
+    "modal.howToRead.yellow": "<strong>Orange (GMSI 0.2–0.4):</strong> Messungen sind möglich, Ergebnisse sollten aber mit Vorsicht interpretiert werden.",
     "modal.howToRead.red": "<strong>Rot (GMSI &lt; 0.2):</strong> schlechte Bedingungen – gute Messungen sind schwieriger zu erhalten, und Bewegungen können leicht übersehen werden oder sind schwer zu interpretieren. Ganz unmöglich sind Messungen aber nicht.",
     "modal.howToRead.none": "<strong>Ohne Farbe:</strong> keine Daten. Das sind Gebiete im Radarschatten oder mit Layover-Verzerrung sowie Gebiete, in denen die Radarbilder schon nach 6&nbsp;Tagen nicht mehr zuverlässig vergleichbar sind.",
     "modal.redWarning.h": "Wichtig: Rot heisst nicht automatisch „keine Bewegung“",
@@ -166,8 +166,8 @@ const I18N = {
       "mouvements de versant. La valeur va de 0 (non adapté) à 1 (très bien adapté) et est fournie " +
       "pour chaque pixel de 10×10&nbsp;mètres.",
     "modal.howToRead.h": "Comment lire la carte ?",
-    "modal.howToRead.green": "<strong>Vert (GMSI ≥ 0,4) :</strong> très bonnes conditions – de bonnes mesures radar sont probables ici.",
-    "modal.howToRead.yellow": "<strong>Jaune (GMSI 0,2–0,4) :</strong> des mesures sont possibles, mais les résultats doivent être interprétés avec prudence.",
+    "modal.howToRead.green": "<strong>Bleu (GMSI ≥ 0,4) :</strong> très bonnes conditions – de bonnes mesures radar sont probables ici.",
+    "modal.howToRead.yellow": "<strong>Orange (GMSI 0,2–0,4) :</strong> des mesures sont possibles, mais les résultats doivent être interprétés avec prudence.",
     "modal.howToRead.red": "<strong>Rouge (GMSI &lt; 0,2) :</strong> mauvaises conditions – de bonnes mesures sont plus difficiles à obtenir, et les mouvements peuvent être facilement manqués ou difficiles à interpréter. Les mesures ne sont toutefois pas totalement impossibles.",
     "modal.howToRead.none": "<strong>Sans couleur :</strong> aucune donnée. Il s'agit de zones en ombre radar ou avec distorsion de layover, ainsi que de zones où les images radar ne sont déjà plus comparables de manière fiable après 6&nbsp;jours.",
     "modal.redWarning.h": "Important : rouge ne signifie pas automatiquement « pas de mouvement »",
@@ -297,8 +297,8 @@ const I18N = {
       "0 (unsuitable) to 1 (very well suited) and is given for every 10×10&nbsp;metre " +
       "pixel.",
     "modal.howToRead.h": "How to read the map",
-    "modal.howToRead.green": "<strong>Green (GMSI ≥ 0.4):</strong> very good conditions – good radar measurements are likely here.",
-    "modal.howToRead.yellow": "<strong>Yellow (GMSI 0.2–0.4):</strong> measurements are possible, but results should be interpreted with caution.",
+    "modal.howToRead.green": "<strong>Blue (GMSI ≥ 0.4):</strong> very good conditions – good radar measurements are likely here.",
+    "modal.howToRead.yellow": "<strong>Orange (GMSI 0.2–0.4):</strong> measurements are possible, but results should be interpreted with caution.",
     "modal.howToRead.red": "<strong>Red (GMSI &lt; 0.2):</strong> poor conditions – good measurements are harder to obtain, and movements can be easily missed or difficult to interpret. Measurements are not entirely impossible, though.",
     "modal.howToRead.none": "<strong>No colour:</strong> no data. These are areas in radar shadow or with layover distortion, as well as areas where the radar images are no longer reliably comparable after just 6&nbsp;days.",
     "modal.redWarning.h": "Important: red doesn't automatically mean “no movement”",

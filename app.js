@@ -404,7 +404,7 @@ async function buildTrackComparison(latlng, token, container) {
     const td = el("td");
     if (r.g !== null) {
       const dot = el("span", "dot");
-      dot.style.background = r.g >= 0.4 ? "#1A9641" : r.g >= 0.2 ? "#FDB863" : "#D7191C";
+      dot.style.background = r.g >= 0.4 ? "#5B9BCB" : r.g >= 0.2 ? "#FDAE61" : "#D7191C";
       td.append(dot, document.createTextNode(r.g.toFixed(2)));
       if (r.g >= 0.4) good++;
     } else {
@@ -817,7 +817,7 @@ function buildSidebar() {
 
 function swatchColorFor(manifest) {
   if (manifest.kind === "orbit") return "linear-gradient(90deg,#3C7AA9,#5ACDEE,#4FAE62,#F36976,#CEB848)";
-  if (manifest.kind === "gmsi") return "#1A9641";
+  if (manifest.kind === "gmsi") return "#5B9BCB";
   if (manifest.kind === "shadow") return "#5A5A5A";
   return "#999";
 }

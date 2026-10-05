@@ -17,12 +17,21 @@ const GeoTiffColorLayer = L.GridLayer.extend({
     this._multiplyBlend = !!(opts && opts.multiplyBlend);
   },
 
+  // The layer's opacity sits on its container, and an element with opacity < 1
+  // is an isolated group in CSS. mix-blend-mode on the tiles inside it would
+  // blend against nothing, so Multiply goes on the container itself, which
+  // shares a stacking context with the basemap layer.
+  onAdd: function (map) {
+    L.GridLayer.prototype.onAdd.call(this, map);
+    if (this._multiplyBlend) L.DomUtil.addClass(this.getContainer(), "gmsi-multiply-layer");
+  },
+
   // The map runs natively in EPSG:2056 (see CRS_LV95 in app.js), so every
   // Leaflet tile is already an exact rectangle in this raster's own CRS --
   // no per-pixel reprojection needed, just a plain bbox read.
   createTile: function (coords, done) {
     const size = this.getTileSize();
-    const canvas = L.DomUtil.create("canvas", "leaflet-tile" + (this._multiplyBlend ? " gmsi-multiply-tile" : ""));
+    const canvas = L.DomUtil.create("canvas", "leaflet-tile");
     canvas.width = size.x;
     canvas.height = size.y;
 
@@ -106,10 +115,9 @@ async function makeGeoTiffLayer(source, kind) {
     opacity: defaultOpacityForKind(kind),
     zIndex: kind === "hillshade" ? 0 : 10,
     attribution,
-    // best-orbit is a categorical track-color overlay -- Multiply lets the
-    // basemap's terrain texture show through the tint, unlike the GMSI
-    // traffic-light layers where solid, undistorted colors matter more
-    multiplyBlend: kind === "orbit",
+    // Multiply lets the basemap's terrain texture (contours, labels) show
+    // through the GMSI classes and the best-orbit tint
+    multiplyBlend: kind === "orbit" || kind === "gmsi",
     // each tile requires an async readRasters() decode (real I/O, not
     // instant); updating continuously *during* the zoom animation just
     // means re-decoding tiles that are about to be discarded anyway, which

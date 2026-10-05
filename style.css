@@ -356,9 +356,9 @@ html, body {
 .search-result:hover { background: #eef3f6; }
 
 
-/* "Bester Track" overlay uses Multiply so terrain texture from the
-   basemap still shows through the categorical track color */
-.gmsi-multiply-tile { mix-blend-mode: multiply; }
+/* GMSI and "Bester Track" overlays use Multiply so terrain texture from the
+   basemap still shows through the colours */
+.gmsi-multiply-layer { mix-blend-mode: multiply; }
 
 /* download progress / error hint on lazily loaded layers */
 .layer-status { font-size: 12px; color: #888; margin-left: auto; }
@@ -439,7 +439,7 @@ body.sidebar-collapsed #sidebar-toggle svg { transform: rotate(180deg); }
   display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
   padding: 6px 10px; border-radius: 6px; color: #fff; font-size: 14px;
 }
-.verdict-good { background: #1A9641; }
+.verdict-good { background: #2C7BB6; }
 .verdict-mid { background: #d98a1f; }
 .verdict-bad { background: #D7191C; }
 .verdict-none { background: #777; }
