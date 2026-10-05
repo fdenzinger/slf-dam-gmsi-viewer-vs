@@ -93,7 +93,7 @@ const I18N = {
     "verdict.mid.title": "Eingeschränkt geeignet",
     "verdict.mid.text": "Messungen sind möglich, die Ergebnisse sollten aber mit Vorsicht interpretiert werden.",
     "verdict.bad.title": "Schwierig",
-    "verdict.bad.text": "Gute Messungen sind hier schwer zu erhalten. Ein tiefer Wert kann an der Geometrie liegen oder an einer sich rasch verändernden Oberfläche (z. B. Vegetation, Schnee oder eine Rutschung).",
+    "verdict.bad.text": "Gute Messungen sind hier schwer zu erhalten. Ein tiefer Wert kann an der Geometrie liegen oder an einer sich rasch verändernden Oberfläche (z. B. Vegetation, Schnee, Gletscher oder eine Rutschung).",
 
     "summary.loadingAllTracks": "Lade alle Tracks …",
     "summary.table.track": "Track",
@@ -221,7 +221,7 @@ const I18N = {
     "verdict.mid.title": "Adapté avec réserve",
     "verdict.mid.text": "Des mesures sont possibles, mais les résultats doivent être interprétés avec prudence.",
     "verdict.bad.title": "Difficile",
-    "verdict.bad.text": "De bonnes mesures sont difficiles à obtenir ici. Une valeur basse peut être due à la géométrie ou à une surface qui change rapidement (p. ex. végétation, neige ou glissement).",
+    "verdict.bad.text": "De bonnes mesures sont difficiles à obtenir ici. Une valeur basse peut être due à la géométrie ou à une surface qui change rapidement (p. ex. végétation, neige, glaciers ou glissement).",
 
     "summary.loadingAllTracks": "Chargement de toutes les trajectoires …",
     "summary.table.track": "Trajectoire",
@@ -348,7 +348,7 @@ const I18N = {
     "verdict.mid.title": "Suited with caveats",
     "verdict.mid.text": "Measurements are possible, but results should be interpreted with caution.",
     "verdict.bad.title": "Difficult",
-    "verdict.bad.text": "Good measurements are hard to obtain here. A low value can be due to the geometry or to a rapidly changing surface (e.g. vegetation, snow or a landslide).",
+    "verdict.bad.text": "Good measurements are hard to obtain here. A low value can be due to the geometry or to a rapidly changing surface (e.g. vegetation, snow, glaciers or a landslide).",
 
     "summary.loadingAllTracks": "Loading all tracks …",
     "summary.table.track": "Track",
