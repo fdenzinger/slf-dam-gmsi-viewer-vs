@@ -93,8 +93,12 @@ async function makeGeoTiffLayer(source, kind) {
   // 4 MB blocks: the host (Zenodo) rate-limits by request *count*, not bytes.
   // Measured on a zoom-then-pan of 24 tiles: 64 KB blocks = 34 requests,
   // 4 MB blocks = 12, at the price of ~1.6x the bytes.
+  // source.whole: a small file of the viewer itself (e.g. the permafrost map): fetched in one go, which also works on
+  // servers without range support (like python's http.server)
   const tiff =
-    source && source.url
+    source && source.whole
+      ? await GeoTIFF.fromBlob(await (await fetch(source.url)).blob())
+      : source && source.url
       ? await GeoTIFF.fromUrl(source.url, { blockSize: 4 * 1024 * 1024, cacheSize: 32 })
       : await GeoTIFF.fromBlob(source);
   const image = await tiff.getImage(0);
@@ -106,7 +110,9 @@ async function makeGeoTiffLayer(source, kind) {
   const latLngBounds = L.latLngBounds([latSW, lonSW], [latNE, lonNE]);
 
   const attribution =
-    kind === "hillshade"
+    kind === "permafrost"
+      ? "Permafrost map &copy; Kenner et al. (2018), SLF"
+      : kind === "hillshade"
       ? "swissALTI3D &copy; swisstopo"
       : "GMSI &copy; Jacquemart &amp; Manconi (2025) &middot; Copernicus Sentinel-1 data (ESA)";
 

@@ -289,6 +289,8 @@ async function renderPointReport(m) {
     for (const l of wrapLines(ctx, m.rowsMsg, EXPORT_W - 120)) { ctx.fillText(l, 60, y); y += 31; }
   }
   y += 22; ctx.fillStyle = "#475569"; ctx.font = `400 21px ${EXPORT_FONT}`; ctx.fillText(m.coordText, 60, y);
+  if (m.terrainText) { y += 32; ctx.font = `400 21px ${EXPORT_FONT}`; ctx.fillText(m.terrainText, 60, y); }
+  if (m.terrainHint) { ctx.font = `400 19px ${EXPORT_FONT}`; ctx.fillStyle = "#64748b"; for (const l of wrapLines(ctx, m.terrainHint, EXPORT_W - 120)) { y += 27; ctx.fillText(l, 60, y); } }
   cv.links = await drawFooter(ctx, m.note);
   return cv;
 }
@@ -346,6 +348,8 @@ async function buildPointModel() {
     bestTrack: s.bestTrack, rows,
     rowsMsg: rows.length ? (good === 0 ? t("summary.msg.none") : good === 1 ? t("summary.msg.one") : t("summary.msg.many", { good, total: rows.length })) : "",
     coordText: `LV95 E ${fmt(s.x)} / N ${fmt(s.y)}` + (s.height != null ? ` · ${s.height}${t("summary.elevation")}` : ""),
+    terrainText: s.terrain ? (s.terrain.aspect === null ? t("summary.terrain.flat") : t("summary.terrain", { slope: Math.round(s.terrain.slope), dir: aspectLabel(s.terrain.aspect) })) : "",
+    terrainHint: s.terrain && s.terrain.hint && s.terrain.hint !== "flat" ? t("summary.terrain." + s.terrain.hint) : "",
     note: t("summary.note"), site: s,
   };
 }
@@ -384,6 +388,7 @@ function pointCsv(m) {
   const rows = [
     [t("app.title"), t("export.title.point")], ["date", new Date().toISOString().slice(0, 10)],
     ["E_LV95", Math.round(s.x)], ["N_LV95", Math.round(s.y)], ["height_m", s.height ?? ""],
+    ["slope_deg", s.terrain ? s.terrain.slope.toFixed(1) : ""], ["aspect_deg", s.terrain && s.terrain.aspect !== null ? s.terrain.aspect.toFixed(0) : ""],
     ["verdict", s.verdict.title], ["gmsi_composite", s.cv !== null && s.cv >= 0 ? s.cv.toFixed(3) : ""], ["best_track", s.bestTrack || ""], [],
     ["track", "direction", "gmsi", "note"],
   ];

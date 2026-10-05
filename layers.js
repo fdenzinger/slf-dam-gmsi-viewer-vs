@@ -82,6 +82,22 @@ function bestOrbitLegend() {
   return TRACKS_VS.map((tr) => ({ color: TRACK_COLORS[tr], label: tr }));
 }
 
+// permafrost map (Kenner et al. 2018), rasterised to the 10 m grid: 1..5 = ground temperature classes, 6 = glacier (not drawn)
+const PERMAFROST_COLORS = {
+  1: [122, 141, 184, 255], // < -3 °C
+  2: [123, 174, 255, 255], // -3 to -2
+  3: [125, 223, 255, 255], // -2 to -1
+  4: [182, 238, 255, 255], // -1 to 0
+  5: [255, 255, 128, 255], // 0 to +1 (possible patchy permafrost)
+};
+function permafrostColor(v, nodata) {
+  if (v === nodata || v === null || v === undefined || Number.isNaN(v)) return TRANSPARENT;
+  return PERMAFROST_COLORS[Math.round(v)] || TRANSPARENT;
+}
+function permafrostLegend() {
+  return [1, 2, 3, 4, 5].map((k, i) => ({ color: rgbaToCss(PERMAFROST_COLORS[k]).replace(/, 1\)$/, ")"), label: t("legend.permafrost." + (i + 1)) }));
+}
+
 function hillshadeColor(v, nodata) {
   if (v === nodata || v === null || v === undefined || Number.isNaN(v)) return TRANSPARENT;
   const g = Math.max(0, Math.min(255, Math.round(v)));
@@ -99,6 +115,8 @@ const LAYER_MANIFEST = [
   { file: "GMSI_VS_best_orbit.tif", group: 2, labelKey: "layer.bestOrbit", kind: "orbit" },
   ...TRACKS_VS.map((tr) => ({ file: `GMSI_VS_${tr}.tif`, group: 3, label: tr, kind: "gmsi" })),
   ...TRACKS_VS.map((tr) => ({ file: `GMSI_VS_shadow_layover_${tr}.tif`, group: 4, label: tr, kind: "shadow" })),
+  // additional information (Advanced mode); small file served with the viewer itself, not from Zenodo
+  { file: "PERMAFROST_VS.tif", group: 5, labelKey: "layer.permafrost", kind: "permafrost", local: "extra/PERMAFROST_VS.tif" },
 ];
 
 function groupLabel(g) {
@@ -122,6 +140,7 @@ function colorFnForKind(kind) {
     case "gmsi": return gmsiColor;
     case "orbit": return bestOrbitColor;
     case "shadow": return shadowLayoverColor;
+    case "permafrost": return permafrostColor;
     case "hillshade": return hillshadeColor;
     default: return () => TRANSPARENT;
   }
@@ -129,5 +148,5 @@ function colorFnForKind(kind) {
 
 // default layer opacity: GMSI classes, the best-track overlay and the shadow/layover layers start at 75 %
 function defaultOpacityForKind(kind) {
-  return kind === "gmsi" || kind === "orbit" || kind === "shadow" ? 0.75 : 1;
+  return kind === "gmsi" || kind === "orbit" || kind === "shadow" || kind === "permafrost" ? 0.75 : 1;
 }

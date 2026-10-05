@@ -699,3 +699,9 @@ body:not(.tour-active) #tour-line { display: none !important; }
 .export-btn:hover:not(:disabled) { background: #eef5fa; border-color: #0072b2; }
 .export-btn:disabled { opacity: 0.6; cursor: progress; }
 .export-btn.failed { border-color: #d7191c; color: #d7191c; }
+
+/* slope and aspect in the point popup */
+.site-terrain { margin: 6px 0 2px; }
+.terrain-line { margin: 0; font-size: 12.5px; font-weight: 400; color: #334155; }
+.terrain-hint { margin: 3px 0 0; font-size: 11.5px; line-height: 1.35; color: #64748b; }
+.legend-source { margin-top: 4px; font-size: 10.5px; line-height: 1.3; color: #94a3b8; }

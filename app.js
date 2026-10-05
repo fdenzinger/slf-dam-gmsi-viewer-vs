@@ -421,15 +421,39 @@ async function fetchHeight(x, y) {
 }
 
 // loads the per-track rasters (on demand) and reads the value of every track at a spot; null if another spot was clicked meanwhile
+// Slope and aspect at a spot from the swisstopo height service: the height at the spot and at four neighbours
+// 10 m away (N, S, E, W), then the usual central differences. A rough value (a 20 m window), smoothed on cliffs.
+async function fetchTerrain(x, y) {
+  const d = 10;
+  const h = async (e, n) => {
+    try {
+      const r = await fetch(`https://api3.geo.admin.ch/rest/services/height?easting=${e}&northing=${n}&sr=2056`);
+      if (!r.ok) return null;
+      const v = Number((await r.json()).height);
+      return Number.isFinite(v) ? v : null;
+    } catch (err) { return null; }
+  };
+  const [zn, zs, ze, zw] = await Promise.all([h(x, y + d), h(x, y - d), h(x + d, y), h(x - d, y)]);
+  if ([zn, zs, ze, zw].some((v) => v === null)) return null;
+  const dzdx = (ze - zw) / (2 * d), dzdy = (zn - zs) / (2 * d);
+  const slope = (Math.atan(Math.hypot(dzdx, dzdy)) * 180) / Math.PI;
+  if (slope < 3) return { slope, aspect: null, hint: "flat" };
+  const aspect = (((Math.atan2(-dzdx, -dzdy) * 180) / Math.PI) + 360) % 360; // direction the slope faces, clockwise from north
+  const east = aspect >= 45 && aspect < 135, west = aspect >= 225 && aspect < 315;
+  return { slope, aspect, hint: slope < 25 ? null : east ? "east" : west ? "west" : "side" };
+}
+const ASPECT_KEYS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+const aspectLabel = (deg) => t("summary.aspect." + ASPECT_KEYS[Math.round(deg / 45) % 8]);
+
 async function collectTrackRows(latlng, token) {
   // open all per-track files in parallel (only headers, a few requests each)
   await Promise.all(
-    TRACKS_GR.flatMap((track) => [`GMSI_VS_${track}.tif`, `GMSI_VS_shadow_layover_${track}.tif`])
+    TRACKS_VS.flatMap((track) => [`GMSI_VS_${track}.tif`, `GMSI_VS_shadow_layover_${track}.tif`])
       .filter((f) => state.layers[f])
       .map((f) => loadLazyLayer(f))
   );
   const rows = [];
-  for (const track of TRACKS_GR) {
+  for (const track of TRACKS_VS) {
     const gEntry = state.layers[`GMSI_VS_${track}.tif`];
     const sEntry = state.layers[`GMSI_VS_shadow_layover_${track}.tif`];
     if (!gEntry) continue;
@@ -492,6 +516,7 @@ async function showSiteSummary(latlng) {
 
   const [x, y] = proj4("EPSG:4326", "EPSG:2056", [latlng.lng, latlng.lat]);
   const heightPromise = fetchHeight(x.toFixed(0), y.toFixed(0));
+  const terrainPromise = fetchTerrain(Math.round(x), Math.round(y));
 
   const composite = state.layers["GMSI_VS_composite.tif"];
   const cv = composite && composite.leafletLayer ? await readRasterValue(composite.leafletLayer, latlng) : null;
@@ -510,7 +535,7 @@ async function showSiteSummary(latlng) {
 
   const track = ov !== null ? ORBIT_INDEX_ORDER[Math.round(ov)] : null;
   // what the export needs from this query
-  state.lastSite = { latlng, x, y, cv, verdict, bestTrack: track && TRACK_INFO[track] ? `${track} (${TRACK_INFO[track].richtung})` : "", height: null, rows: null };
+  state.lastSite = { latlng, x, y, cv, verdict, bestTrack: track && TRACK_INFO[track] ? `${track} (${TRACK_INFO[track].richtung})` : "", height: null, rows: null, terrain: null };
   if (track && TRACK_INFO[track]) {
     const p = el("p", "best-track");
     p.appendChild(el("strong", "", t("summary.bestTrack")));
@@ -539,6 +564,16 @@ async function showSiteSummary(latlng) {
     }
   }
   box.appendChild(compare);
+
+  const terrainBox = el("div", "site-terrain");
+  box.appendChild(terrainBox);
+  terrainPromise.then((tr) => {
+    if (!tr || token !== state.summaryToken) return;
+    if (state.lastSite && state.lastSite.latlng === latlng) state.lastSite.terrain = tr;
+    terrainBox.appendChild(el("p", "terrain-line", tr.aspect === null ? t("summary.terrain.flat") : t("summary.terrain", { slope: Math.round(tr.slope), dir: aspectLabel(tr.aspect) })));
+    if (tr.hint && tr.hint !== "flat") terrainBox.appendChild(el("p", "terrain-hint", t("summary.terrain." + tr.hint)));
+    popup.update();
+  });
 
   const foot = el("p", "site-foot");
   box.appendChild(foot);
@@ -894,6 +929,7 @@ function swatchColorFor(manifest) {
   if (manifest.kind === "orbit") return "linear-gradient(90deg,#3C7AA9,#5ACDEE,#4FAE62,#F36976,#CEB848)";
   if (manifest.kind === "gmsi") return "#5B9BCB";
   if (manifest.kind === "shadow") return "#5A5A5A";
+  if (manifest.kind === "permafrost") return "linear-gradient(90deg,#7A8DB8,#7BAEFF,#7DDFFF,#B6EEFF,#FFFF80)";
   return "#999";
 }
 
@@ -916,9 +952,10 @@ function updateLegend() {
   if (visibleKinds.has("gmsi")) legend.appendChild(legendBlock(t("legend.gmsiTitle"), gmsiLegend()));
   if (visibleKinds.has("orbit")) legend.appendChild(legendBlock(t("legend.trackTitle"), bestOrbitLegend()));
   if (visibleKinds.has("shadow")) legend.appendChild(legendBlock(t("legend.shadowTitle"), shadowLegend()));
+  if (visibleKinds.has("permafrost")) legend.appendChild(legendBlock(t("legend.permafrostTitle"), permafrostLegend(), t("legend.permafrostSource")));
 }
 
-function legendBlock(title, items) {
+function legendBlock(title, items, source) {
   const block = document.createElement("div");
   block.className = "legend-block";
   const titleEl = document.createElement("div");
@@ -938,6 +975,12 @@ function legendBlock(title, items) {
     row.appendChild(lbl);
     block.appendChild(row);
   });
+  if (source) {
+    const src = document.createElement("div");
+    src.className = "legend-source";
+    src.textContent = source;
+    block.appendChild(src);
+  }
   return block;
 }
 
@@ -1170,7 +1213,7 @@ const RASTER_BASE_URL = `https://zenodo.org/api/records/${ZENODO_RECORD_ID}/file
 // needs it. The composite is shown at start and best-orbit feeds the click
 // popup, so those two are opened up front; the other layers are only opened
 // when someone switches them on (saves rate-limit budget too).
-const remoteSource = (entry) => ({ name: entry.file, url: `${RASTER_BASE_URL}${entry.file}/content` });
+const remoteSource = (entry) => ({ name: entry.file, url: entry.local || `${RASTER_BASE_URL}${entry.file}/content`, whole: !!entry.local });
 const isEagerLayer = (entry) => entry.defaultOn || entry.kind === "orbit";
 
 async function tryAutoLoadOverHttp() {
