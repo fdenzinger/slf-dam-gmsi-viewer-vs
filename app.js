@@ -619,7 +619,7 @@ function findMatches(fileList) {
   const missing = [];
   for (const entry of LAYER_MANIFEST) {
     if (byName.has(entry.file)) found[entry.file] = byName.get(entry.file);
-    else missing.push(entry.file);
+    else if (!entry.wms && !entry.local) missing.push(entry.file); // WMS overlays and bundled extras are not part of the folder
   }
   return { found, missing };
 }
@@ -751,8 +751,10 @@ async function loadProject(fileList, options = {}) {
     if (r) {
       state.layers[entry.file] = { manifest: entry, leafletLayer: r.layer, checked: !!entry.defaultOn };
       if (entry.defaultOn && !fitBoundsTarget) fitBoundsTarget = r.latLngBounds;
-    } else if (lazyFetch) {
-      state.layers[entry.file] = { manifest: entry, leafletLayer: null, checked: false, lazyFetch: () => lazyFetch(entry) };
+    } else if (lazyFetch || entry.wms || entry.local) {
+      // in folder mode the extras (WMS overlays, bundled permafrost map) still load on demand
+      const fetcher = lazyFetch || (async (e) => remoteSource(e));
+      state.layers[entry.file] = { manifest: entry, leafletLayer: null, checked: false, lazyFetch: () => fetcher(entry) };
     }
   }
 
@@ -794,8 +796,14 @@ async function loadProject(fileList, options = {}) {
 // Adds it to the map only if it's still ticked once the download finishes.
 async function loadLazyLayer(file) {
   const entry = state.layers[file];
-  if (!entry || entry.loading || entry.leafletLayer) return;
+  if (!entry || entry.leafletLayer) return;
+  if (entry.loading) return entry.loadPromise; // already on its way: callers can await the same download
   entry.loading = true;
+  entry.loadPromise = doLoadLazyLayer(file, entry);
+  return entry.loadPromise;
+}
+
+async function doLoadLazyLayer(file, entry) {
   if (entry.statusEl) entry.statusEl.textContent = t("load.layerLoading");
   try {
     // swisstopo overlays are tile layers from the WMS, everything else is a GeoTIFF
@@ -1189,7 +1197,7 @@ function onLangChange() {
 
 // ---------------- feedback link and imprint / data status
 const FEEDBACK_EMAIL = "florian.denzinger@slf.ch";
-const APP_BUILD = "2026-10-08"; // update when the viewer or its data change
+const APP_BUILD = "2026-10-06"; // update when the viewer or its data change
 
 document.getElementById("feedback-link").addEventListener("click", (e) => {
   // the mail gets the current view (map section, layers, spot) so a report can be reproduced
