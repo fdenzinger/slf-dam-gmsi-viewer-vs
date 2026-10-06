@@ -755,3 +755,5 @@ body:not(.tour-active) #tour-line { display: none !important; }
 }
 #intro-collapsed:hover { background: #dcecf7; }
 #intro-collapsed.hidden { display: none; }
+
+#about-modal-box .about-cite { margin-top: 0.6em; }
