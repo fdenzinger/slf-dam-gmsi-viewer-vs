@@ -1276,7 +1276,7 @@ function renderAbout() {
     `<h2>${t("about.dataH")}</h2><ul>` +
     `<li>${t("about.gmsi")}<div class="about-cite"><strong>${t("about.citeLabel")}</strong> ${t("about.citation")}</div></li>` +
     `<li>${t("about.record")} <a href="https://zenodo.org/records/${ZENODO_RECORD_ID}" target="_blank" rel="noopener">${ZENODO_RECORD_ID}</a>.</li>` +
-    `<li>${t("about.permafrost")}</li><li>${t("about.swisstopo")}</li>` +
+    `<li>${t("about.permafrost")}<div class="about-cite">${t("about.permafrostPub")}</div></li><li>${t("about.swisstopo")}</li>` +
     `<li>${t("about.app")} ${APP_BUILD}</li></ul>` +
     `<h2>${t("about.legalH")}</h2><p>${t("about.legal")}</p>`;
 }
