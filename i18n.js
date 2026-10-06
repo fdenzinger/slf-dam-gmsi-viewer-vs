@@ -53,7 +53,7 @@ const I18N = {
     "feedback.subject": "Rückmeldung",
     "feedback.body": "Bitte hier schreiben:",
     "feedback.view": "Ansicht",
-    "intro.text": "Der <strong>Ground Motion Sensitivity Index (GMSI)</strong> zeigt, wie gut sich <strong>Bodenbewegungen</strong> im Wallis mit Satellitenradar (Sentinel‑1) überwachen lassen: von 0 (ungeeignet) bis 1 (sehr gut). Er zeigt nicht, ob sich der Boden bewegt, sondern wie zuverlässig sich Bewegungen messen lassen.",
+    "intro.text": "Der <strong>Ground Motion Sensitivity Index (GMSI)</strong> zeigt, wie gut sich <strong>Bodenbewegungen</strong> im Wallis mit Satellitenradar (Sentinel‑1) überwachen lassen: von 0 (kaum messbar) bis 1 (sehr gut). Er zeigt nicht, ob sich der Boden bewegt, sondern wie zuverlässig sich Bewegungen messen lassen.",
     "intro.collapsed": "Was ist der GMSI?",
     "intro.more": "Mehr erfahren",
     "intro.tutorial": "Tutorial starten",
@@ -68,7 +68,7 @@ const I18N = {
       "Der <strong>GMSI (Ground Motion Sensitivity Index)</strong> zeigt, wie gut sich ein Ort im " +
       "Kanton Wallis mit Satellitenradar (Sentinel&#8209;1) auf Bodenbewegungen überwachen lässt – " +
       "zum Beispiel für Rutschungen, Sackungen oder andere Hangbewegungen. Der Wert reicht von " +
-      "0 (ungeeignet) bis 1 (sehr gut geeignet) und liegt für jeden 10×10&nbsp;Meter grossen " +
+      "0 (kaum messbar) bis 1 (sehr gut geeignet) und liegt für jeden 10×10&nbsp;Meter grossen " +
       "Bildpunkt vor.",
     "modal.howToRead.h": "Wie ist die Karte zu lesen?",
     "modal.howToRead.green": "<strong>Blau (GMSI ≥ 0.4):</strong> gute Bedingungen – hier sind gute Radarmessungen wahrscheinlich.",
@@ -358,7 +358,7 @@ const I18N = {
     "feedback.subject": "Retour d'information",
     "feedback.body": "Écrivez ici :",
     "feedback.view": "Vue",
-    "intro.text": "Le <strong>Ground Motion Sensitivity Index (GMSI)</strong> indique dans quelle mesure les <strong>mouvements de terrain</strong> en Valais peuvent être surveillés par radar satellitaire (Sentinel‑1) : de 0 (inadapté) à 1 (très bon). Il ne montre pas si le terrain bouge, mais avec quelle fiabilité les mouvements peuvent être mesurés.",
+    "intro.text": "Le <strong>Ground Motion Sensitivity Index (GMSI)</strong> indique dans quelle mesure les <strong>mouvements de terrain</strong> en Valais peuvent être surveillés par radar satellitaire (Sentinel‑1) : de 0 (à peine mesurable) à 1 (très bon). Il ne montre pas si le terrain bouge, mais avec quelle fiabilité les mouvements peuvent être mesurés.",
     "intro.collapsed": "Qu'est-ce que le GMSI ?",
     "intro.more": "En savoir plus",
     "intro.tutorial": "Lancer le tutoriel",
@@ -373,7 +373,7 @@ const I18N = {
       "Le <strong>GMSI (Ground Motion Sensitivity Index)</strong> indique dans quelle mesure un " +
       "endroit du canton du Valais peut être surveillé par radar satellite (Sentinel&#8209;1) pour " +
       "détecter des mouvements de terrain – par exemple des glissements, des tassements ou d'autres " +
-      "mouvements de versant. La valeur va de 0 (non adapté) à 1 (très bien adapté) et est fournie " +
+      "mouvements de versant. La valeur va de 0 (à peine mesurable) à 1 (très bien adapté) et est fournie " +
       "pour chaque pixel de 10×10&nbsp;mètres.",
     "modal.howToRead.h": "Comment lire la carte ?",
     "modal.howToRead.green": "<strong>Bleu (GMSI ≥ 0,4) :</strong> bonnes conditions – de bonnes mesures radar sont probables ici.",
@@ -663,7 +663,7 @@ const I18N = {
     "feedback.subject": "Feedback",
     "feedback.body": "Please write here:",
     "feedback.view": "View",
-    "intro.text": "The <strong>Ground Motion Sensitivity Index (GMSI)</strong> shows how well <strong>ground movement</strong> in Valais can be monitored with satellite radar (Sentinel‑1): from 0 (unsuitable) to 1 (very good). It does not show whether the ground moves, but how reliably movements can be measured.",
+    "intro.text": "The <strong>Ground Motion Sensitivity Index (GMSI)</strong> shows how well <strong>ground movement</strong> in Valais can be monitored with satellite radar (Sentinel‑1): from 0 (hardly measurable) to 1 (very good). It does not show whether the ground moves, but how reliably movements can be measured.",
     "intro.collapsed": "What is the GMSI?",
     "intro.more": "Learn more",
     "intro.tutorial": "Start tutorial",
@@ -678,7 +678,7 @@ const I18N = {
       "The <strong>GMSI (Ground Motion Sensitivity Index)</strong> shows how well a location in " +
       "the canton of Valais can be monitored for ground motion using satellite radar (Sentinel&#8209;1) – " +
       "for example for landslides, subsidence or other slope movements. The value ranges from " +
-      "0 (unsuitable) to 1 (very well suited) and is given for every 10×10&nbsp;metre " +
+      "0 (hardly measurable) to 1 (very well suited) and is given for every 10×10&nbsp;metre " +
       "pixel.",
     "modal.howToRead.h": "How to read the map",
     "modal.howToRead.green": "<strong>Blue (GMSI ≥ 0.4):</strong> good conditions – good radar measurements are likely here.",
