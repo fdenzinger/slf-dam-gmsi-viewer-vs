@@ -99,7 +99,7 @@ const I18N = {
       "pro Bildpunkt:",
     "modal.howMade.li1": "<strong>Datenzuverlässigkeit:</strong> Wie ähnlich sieht die Erdoberfläche auf Radarbildern über die Zeit hinweg aus? Verändert sie sich schnell (z.&nbsp;B. durch Vegetation, Schnee oder Bodenbewegung), nimmt diese Ähnlichkeit rasch ab.",
     "modal.howMade.li2": "<strong>Sichtbarkeit:</strong> Kann der Satellit den Ort überhaupt „sehen“, oder liegt er im Radarschatten bzw. wird durch steiles Gelände verzerrt (Layover)?",
-    "modal.howMade.li3": "<strong>Messempfindlichkeit:</strong> Radar misst Bewegung nur in Blickrichtung des Satelliten. Ein Hang, der sich seitlich zum Satelliten bewegt, ist schwerer zu erfassen als einer, der sich direkt auf ihn zu oder von ihm weg bewegt. Vereinfachend, aber wie üblich, wird angenommen, dass sich der Hang entlang der Falllinie bewegt.",
+    "modal.howMade.li3": "<strong>Messempfindlichkeit:</strong> Radar misst Bewegung nur in Blickrichtung des Satelliten. Ein Hang, der sich seitlich zum Satelliten bewegt, ist schwerer zu erfassen als einer, der sich direkt auf ihn zu oder von ihm weg bewegt. Vereinfachend wird angenommen, dass sich der Hang entlang der Falllinie bewegt.",
     "modal.howMade.outro":
       "Da mehrere Satelliten-Bahnen (Tracks) die Schweiz aus unterschiedlichen Richtungen " +
       "überfliegen, wird zusätzlich für jeden Bildpunkt festgehalten, welche Bahn dort die besten " +
@@ -407,7 +407,7 @@ const I18N = {
       "pixel :",
     "modal.howMade.li1": "<strong>Fiabilité des données :</strong> à quel point la surface du sol se ressemble-t-elle sur les images radar au fil du temps ? Si elle change rapidement (p.&nbsp;ex. végétation, neige ou mouvement de terrain), cette ressemblance diminue vite.",
     "modal.howMade.li2": "<strong>Visibilité :</strong> le satellite peut-il seulement « voir » l'endroit, ou se trouve-t-il en ombre radar, voire déformé par un terrain escarpé (layover) ?",
-    "modal.howMade.li3": "<strong>Sensibilité de mesure :</strong> le radar ne mesure le mouvement que dans sa direction de visée. Une pente qui se déplace latéralement par rapport au satellite est plus difficile à détecter qu'une pente qui se déplace directement vers lui ou en s'en éloignant. On suppose, de façon simplificatrice mais usuelle, que la pente se déplace le long de la ligne de plus grande pente.",
+    "modal.howMade.li3": "<strong>Sensibilité de mesure :</strong> le radar ne mesure le mouvement que dans sa direction de visée. Une pente qui se déplace latéralement par rapport au satellite est plus difficile à détecter qu'une pente qui se déplace directement vers lui ou en s'en éloignant. On suppose, de façon simplificatrice, que la pente se déplace le long de la ligne de plus grande pente.",
     "modal.howMade.outro":
       "Comme plusieurs orbites satellite (tracks/trajectoires) survolent la Suisse depuis des " +
       "directions différentes, on détermine en plus pour chaque pixel quelle trajectoire y donne les " +
@@ -714,7 +714,7 @@ const I18N = {
       "per pixel:",
     "modal.howMade.li1": "<strong>Data reliability:</strong> how similar does the ground surface look on radar images over time? If it changes quickly (e.&nbsp;g. due to vegetation, snow or ground motion), this similarity drops fast.",
     "modal.howMade.li2": "<strong>Visibility:</strong> can the satellite even “see” the location, or is it in radar shadow or distorted by steep terrain (layover)?",
-    "modal.howMade.li3": "<strong>Measurement sensitivity:</strong> radar only measures motion in the satellite's line of sight. A slope that moves sideways relative to the satellite is harder to detect than one that moves directly towards or away from it. As a common simplification, the slope is assumed to move along the fall line.",
+    "modal.howMade.li3": "<strong>Measurement sensitivity:</strong> radar only measures motion in the satellite's line of sight. A slope that moves sideways relative to the satellite is harder to detect than one that moves directly towards or away from it. As a simplification, the slope is assumed to move along the fall line.",
     "modal.howMade.outro":
       "Since several satellite orbits (tracks) fly over Switzerland from different directions, " +
       "the map also records, for every pixel, which track gives the best results there. " +
