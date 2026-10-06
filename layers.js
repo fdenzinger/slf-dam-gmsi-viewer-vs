@@ -50,7 +50,7 @@ function gmsiLegend() {
     { color: "#5B9BCB", label: t("legend.gmsi.green") },
     { color: "#FDAE61", label: t("legend.gmsi.yellow") },
     { color: "#D7191C", label: t("legend.gmsi.red") },
-    { color: "#5A5A5A", label: t("legend.gmsi.blocked") },
+    { color: "#3A3A3A", label: t("legend.gmsi.blocked") },
   ];
 }
 
@@ -59,14 +59,14 @@ function gmsiLegend() {
 // possible" category -- the distinction between the three geometric causes
 // isn't actionable for canton staff, it's simpler to just flag "no
 // measurement possible here"
-const SHADOW_NO_DATA = [90, 90, 90, 255]; // #5A5A5A
+const SHADOW_NO_DATA = [58, 58, 58, 255]; // #3A3A3A
 function shadowLayoverColor(v, nodata) {
   if (v === nodata || v === null || v === undefined || Number.isNaN(v)) return TRANSPARENT;
   if (v === 5 || v === 17 || v === 21) return SHADOW_NO_DATA;
   return TRANSPARENT; // includes value 1 (visible, no issue)
 }
 function shadowLegend() {
-  return [{ color: "#5A5A5A", label: t("legend.shadow") }];
+  return [{ color: "#3A3A3A", label: t("legend.shadow") }];
 }
 
 // best-orbit categorical index: 0=A015 .. 3=D139 (order fixed by the source data)

@@ -12,7 +12,7 @@ const AREA_CLASSES = [
   { id: "good", color: "#5B9BCB", key: "area.class.good" },
   { id: "mid", color: "#FDAE61", key: "area.class.mid" },
   { id: "bad", color: "#D7191C", key: "area.class.bad" },
-  { id: "blocked", color: "#5A5A5A", key: "area.class.blocked" },
+  { id: "blocked", color: "#3A3A3A", key: "area.class.blocked" },
   { id: "nodata", color: "#D9DDE1", key: "area.class.nodata" },
 ];
 

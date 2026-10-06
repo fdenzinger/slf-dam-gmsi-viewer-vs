@@ -1011,7 +1011,7 @@ function buildSidebar() {
 function swatchColorFor(manifest) {
   if (manifest.kind === "orbit") return "linear-gradient(90deg,#3C7AA9,#5ACDEE,#4FAE62,#F36976,#CEB848)";
   if (manifest.kind === "gmsi") return "#5B9BCB";
-  if (manifest.kind === "shadow") return "#5A5A5A";
+  if (manifest.kind === "shadow") return "#3A3A3A";
   if (manifest.kind === "glacier") return "linear-gradient(90deg,#BEFFE8,#CD8966)";
   if (manifest.kind === "slope") return "linear-gradient(90deg,#F2E50A,#F46F24,#DE055B,#C889BB,#4B4B4B)";
   if (manifest.kind === "permafrost") return "linear-gradient(90deg,#7A8DB8,#7BAEFF,#7DDFFF,#B6EEFF,#FFFF80)";
@@ -1126,7 +1126,7 @@ const GAZETTEER_TYPES = [
   { re: /^(Strassenpass|Pass)\s+/, kind: "pass", rank: 4, zoom: 7 },
   { re: /^(Stausee|See)\s+/, kind: "lake", rank: 5, zoom: 7 },
   { re: /^Gletscher\s+/, kind: "glacier", rank: 6, zoom: 7 },
-  { re: /^Ort\s+/, kind: "place", rank: 7, zoom: 10 },
+  { re: /^Ort\s+/, kind: "place", rank: 7, zoom: 8 },
   { re: /^Grat\s+/, kind: "ridge", rank: 8, zoom: 7 },
   { re: /^Tal\s+/, kind: "valley", rank: 8, zoom: 6 },
   { re: /^(Flurname swisstopo|Gebiet)\s+/, kind: "name", rank: 9, zoom: 8 },
@@ -1140,7 +1140,7 @@ const SEARCH_CANTON = "VS"; // hits in the canton this viewer covers come first 
 function parseSearchHit(r) {
   const a = r.attrs;
   const label = stripTags(a.label);
-  const base = { lat: a.lat, lon: a.lon, label, zoom: 14, name: label, meta: "", rank: 9 };
+  const base = { lat: a.lat, lon: a.lon, label, zoom: 10, name: label, meta: "", rank: 9 };
   if (a.origin === "gazetteer") {
     const type = GAZETTEER_TYPES.find((tp) => tp.re.test(label));
     if (!type) return null;
@@ -1155,7 +1155,11 @@ function parseSearchHit(r) {
   const kinds = { gg25: ["search.type.municipality", 0], zipcode: ["search.type.zip", 1], district: ["search.type.district", 2], kantone: ["search.type.canton", 2], address: ["search.type.address", 10] };
   const k = kinds[a.origin];
   if (!k) return null;
-  return { ...base, rank: k[1], meta: t(k[0]), key: `${a.origin}|${label}` };
+  // areas (municipality, postcode, district, canton): keep the bounding box, because the centre point of a large
+  // municipality (e.g. Zermatt) lies far from the village
+  const box = ["gg25", "zipcode", "district", "kantone"].includes(a.origin) && /BOX\(([\d.]+) ([\d.]+),([\d.]+) ([\d.]+)\)/.exec(a.geom_st_box2d || "");
+  const bounds = box ? L.latLngBounds(CRS_LV95.projection.unproject(new L.Point(+box[1], +box[2])), CRS_LV95.projection.unproject(new L.Point(+box[3], +box[4]))) : null;
+  return { ...base, rank: k[1], meta: t(k[0]), key: `${a.origin}|${label}`, bounds };
 }
 
 const plain = (x) => x.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -1170,7 +1174,7 @@ async function runSearch(query) {
     // two requests: with addresses in the same request they crowd out the gazetteer hits (peaks, passes, lakes ...)
     // lang=de pins the type words of the hits ("Alpiner Gipfel", "See" ...) that parseSearchHit() recognises,
     // independent of the browser language
-    const base = "https://api3.geo.admin.ch/rest/services/api/SearchServer?type=locations&lang=de&searchText=" + encodeURIComponent(query);
+    const base = "https://api3.geo.admin.ch/rest/services/api/SearchServer?type=locations&lang=de&searchText=" + encodeURIComponent(query) + "&sr=2056"; // sr=2056: bounding boxes in LV95 (lat/lon stay WGS84)
     const [places, addrs] = await Promise.all([
       fetch(base + "&limit=50&origins=gg25,district,kantone,zipcode,gazetteer").then((r) => (r.ok ? r.json() : { results: [] })),
       fetch(base + "&limit=8&origins=address").then((r) => (r.ok ? r.json() : { results: [] })).catch(() => ({ results: [] })),
@@ -1211,7 +1215,10 @@ async function runSearch(query) {
         row.appendChild(meta);
       }
       row.addEventListener("click", () => {
-        if (state.map) state.map.setView([h.lat, h.lon], h.zoom);
+        if (state.map) {
+          if (h.bounds && h.bounds.isValid()) state.map.fitBounds(h.bounds, { padding: [20, 20] });
+          else state.map.setView([h.lat, h.lon], h.zoom);
+        }
         searchInput.value = h.label;
         searchResults.classList.add("hidden");
       });
