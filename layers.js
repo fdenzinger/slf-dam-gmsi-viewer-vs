@@ -136,7 +136,7 @@ function gmsiLabel(v) {
   if (v < 0) return "keine Messung möglich (Radarschatten / Layover)";
   if (v < 0.2) return "schlechte Bedingungen";
   if (v < 0.4) return "Messungen möglich, aber mit Vorsicht";
-  return "sehr gute Bedingungen";
+  return "gute Bedingungen";
 }
 function shadowLayoverLabel(v) {
   if (v === 5 || v === 17 || v === 21) return "keine Messung möglich (Radarschatten / Layover)";

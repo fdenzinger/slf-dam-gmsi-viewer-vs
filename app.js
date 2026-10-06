@@ -1213,7 +1213,7 @@ function renderAbout() {
     `<p>${t("about.dev")}</p>` +
     `<p>${t("about.contact")} <a href="mailto:${FEEDBACK_EMAIL}">${FEEDBACK_EMAIL}</a>.</p>` +
     `<h2>${t("about.dataH")}</h2><ul>` +
-    `<li>${t("about.gmsi")}</li>` +
+    `<li>${t("about.gmsi")}<br>${t("about.citation")}</li>` +
     `<li>${t("about.record")} <a href="https://zenodo.org/records/${ZENODO_RECORD_ID}" target="_blank" rel="noopener">${ZENODO_RECORD_ID}</a>.</li>` +
     `<li>${t("about.permafrost")}</li><li>${t("about.swisstopo")}</li>` +
     `<li>${t("about.app")} ${APP_BUILD}</li></ul>` +
