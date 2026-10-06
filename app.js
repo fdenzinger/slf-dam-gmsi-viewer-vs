@@ -100,12 +100,73 @@ function swissWms(layerName, extraOpts) {
   }, extraOpts || {}));
 }
 
-// an overlay from swisstopo's WMS (transparent PNG tiles) that blends with the basemap like the GMSI layers
+// WMS tiles clipped to the canton outline (CANTON_RINGS, canton.js). Each tile is drawn onto a canvas
+// through the outline as clip path; with keepColors only pixels of those RGB colours survive (the
+// glacier layer has no per-year sublayers, but each inventory year has its own flat colour).
+const CANTON_BOUNDS = (() => {
+  const xs = CANTON_RINGS.flat().map((c) => c[0]), ys = CANTON_RINGS.flat().map((c) => c[1]);
+  return { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
+})();
+L.TileLayer.CantonWms = L.TileLayer.WMS.extend({
+  createTile: function (coords, done) {
+    const ts = this.getTileSize();
+    const canvas = L.DomUtil.create("canvas", "leaflet-tile");
+    canvas.width = ts.x; canvas.height = ts.y;
+    const scale = this._map.options.crs.scale(coords.z); // px per metre
+    const px = coords.x * ts.x, py = coords.y * ts.y;
+    const x0 = LV95_ORIGIN_X + px / scale, x1 = LV95_ORIGIN_X + (px + ts.x) / scale;
+    const y1 = LV95_ORIGIN_Y - py / scale, y0 = LV95_ORIGIN_Y - (py + ts.y) / scale;
+    const B = CANTON_BOUNDS;
+    if (x1 < B.x0 || x0 > B.x1 || y1 < B.y0 || y0 > B.y1) { // outside the canton: nothing to fetch
+      setTimeout(() => done(null, canvas), 0);
+      return canvas;
+    }
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      ctx.beginPath();
+      for (const ring of CANTON_RINGS) {
+        ring.forEach((c, i) => {
+          const X = (c[0] - LV95_ORIGIN_X) * scale - px, Y = (LV95_ORIGIN_Y - c[1]) * scale - py;
+          if (i === 0) ctx.moveTo(X, Y); else ctx.lineTo(X, Y);
+        });
+        ctx.closePath();
+      }
+      ctx.save();
+      ctx.clip("evenodd");
+      ctx.drawImage(img, 0, 0, ts.x, ts.y);
+      ctx.restore();
+      const keep = this.options.keepColors;
+      if (keep) {
+        const im = ctx.getImageData(0, 0, ts.x, ts.y), d = im.data;
+        for (let i = 0; i < d.length; i += 4) {
+          if (d[i + 3] === 0) continue;
+          let ok = d[i + 3] > 200;
+          if (ok) ok = keep.some((k) => Math.abs(d[i] - k[0]) < 12 && Math.abs(d[i + 1] - k[1]) < 12 && Math.abs(d[i + 2] - k[2]) < 12);
+          if (!ok) d[i + 3] = 0;
+        }
+        ctx.putImageData(im, 0, 0);
+      }
+      done(null, canvas);
+    };
+    img.onerror = (e) => done(e, canvas);
+    img.src = this.getTileUrl(coords);
+    return canvas;
+  },
+});
+
+// an overlay from swisstopo's WMS (transparent PNG tiles) that blends with the basemap like the GMSI layers, clipped to the canton
 function makeWmsOverlay(manifest) {
-  const layer = swissWms(manifest.wms, {
+  const layer = new L.TileLayer.CantonWms("https://wms.geo.admin.ch/", {
+    layers: manifest.wms,
+    format: "image/png",
     transparent: true,
+    version: "1.3.0",
+    maxZoom: LV95_RESOLUTIONS.length - 1,
     zIndex: 10,
     opacity: defaultOpacityForKind(manifest.kind),
+    keepColors: manifest.keepColors,
     attribution: manifest.attribution || "&copy; swisstopo",
   });
   layer.on("add", () => L.DomUtil.addClass(layer.getContainer(), "gmsi-multiply-layer"));
@@ -951,7 +1012,7 @@ function swatchColorFor(manifest) {
   if (manifest.kind === "orbit") return "linear-gradient(90deg,#3C7AA9,#5ACDEE,#4FAE62,#F36976,#CEB848)";
   if (manifest.kind === "gmsi") return "#5B9BCB";
   if (manifest.kind === "shadow") return "#5A5A5A";
-  if (manifest.kind === "glacier") return "linear-gradient(90deg,#004DA8,#0078FF,#73DFFF,#BEFFE8)";
+  if (manifest.kind === "glacier") return "linear-gradient(90deg,#BEFFE8,#CD8966)";
   if (manifest.kind === "slope") return "linear-gradient(90deg,#F2E50A,#F46F24,#DE055B,#C889BB,#4B4B4B)";
   if (manifest.kind === "permafrost") return "linear-gradient(90deg,#7A8DB8,#7BAEFF,#7DDFFF,#B6EEFF,#FFFF80)";
   return "#999";

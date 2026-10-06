@@ -99,7 +99,9 @@ function permafrostLegend() {
 }
 
 // swisstopo map overlays (WMS), shown with Multiply like the GMSI layers; the swatches repeat the colours of swisstopo's own legends
-const GLACIER_SWATCHES = ["#004DA8", "#0078FF", "#73DFFF", "#BEFFE8", "#CD8966"];
+// only the 2016 inventory is shown: extent and debris cover (the WMS has no per-year sublayers, so the layer is filtered by these colours)
+const GLACIER_SWATCHES = ["#BEFFE8", "#CD8966"];
+const GLACIER_2016_RGB = [[190, 255, 232], [205, 137, 102]];
 const SLOPE_SWATCHES = ["#F2E50A", "#F46F24", "#DE055B", "#C889BB", "#4B4B4B"];
 function glacierLegend() { return GLACIER_SWATCHES.map((color, i) => ({ color, label: t("legend.glacier." + (i + 1)) })); }
 function slopeLegend() { return SLOPE_SWATCHES.map((color, i) => ({ color, label: t("legend.slope." + (i + 1)) })); }
@@ -123,7 +125,7 @@ const LAYER_MANIFEST = [
   ...TRACKS_VS.map((tr) => ({ file: `GMSI_VS_shadow_layover_${tr}.tif`, group: 4, label: tr, kind: "shadow" })),
   // additional information (Advanced mode); small file served with the viewer itself, not from Zenodo
   { file: "PERMAFROST_VS.tif", group: 5, labelKey: "layer.permafrost", kind: "permafrost", local: "extra/PERMAFROST_VS.tif" },
-  { file: "WMS_glacier", group: 5, labelKey: "layer.glacier", kind: "glacier", wms: "ch.swisstopo.geologie-gletscherausdehnung", attribution: "Gletscherausdehnung &copy; swisstopo, GLAMOS" },
+  { file: "WMS_glacier", group: 5, labelKey: "layer.glacier", kind: "glacier", wms: "ch.swisstopo.geologie-gletscherausdehnung", keepColors: GLACIER_2016_RGB, attribution: "Gletscherausdehnung &copy; swisstopo, GLAMOS" },
   { file: "WMS_slope", group: 5, labelKey: "layer.slope", kind: "slope", wms: "ch.swisstopo.hangneigung-ueber_30", attribution: "Hangneigung &copy; swisstopo" },
 ];
 
