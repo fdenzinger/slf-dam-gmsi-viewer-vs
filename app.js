@@ -36,6 +36,7 @@ const state = {
   layers: {}, // file -> { manifest, leafletLayer, checked }
   basemaps: {}, // "hillshade" | "grau" | "swissimage" -> Leaflet layer
   currentBasemap: "grau",
+  bufferRadius: 50, // metres around a clicked point that the point query averages over
 };
 
 // ---------------------------------------------------------------- custom EPSG:2056 (LV95) CRS
@@ -344,21 +345,32 @@ const ShareControl = L.Control.extend({
 
 // ---------------------------------------------------------------- click-to-query
 
-async function readRasterValue(leafletLayer, latlng) {
+// Value at a spot: all pixels within a circular buffer of state.bufferRadius metres (the grid is 10 m).
+// Continuous values (GMSI) are averaged, categorical ones (best track, shadow/layover) take the most frequent class.
+async function readRasterValue(leafletLayer, latlng, categorical) {
   const tiff = leafletLayer._tiff;
   const nodata = leafletLayer._nodata;
   const [x, y] = proj4("EPSG:4326", "EPSG:2056", [latlng.lng, latlng.lat]);
+  const r = Math.max(5, state.bufferRadius);
+  const n = Math.max(1, Math.round((2 * r) / 10));
   try {
     const rasters = await tiff.readRasters({
-      bbox: [x - 5, y - 5, x + 5, y + 5],
-      width: 1,
-      height: 1,
+      bbox: [x - r, y - r, x + r, y + r],
+      width: n,
+      height: n,
       resampleMethod: "nearest",
       fillValue: nodata,
     });
-    const v = rasters[0][0];
-    if (v === nodata || v === undefined || v === null || Number.isNaN(v)) return null;
-    return v;
+    // keep only the pixels whose centre lies inside the circle
+    const vals = Array.from(rasters[0]).filter((v, i) => {
+      const dx = ((i % n) + 0.5) * (2 * r / n) - r, dy = (Math.floor(i / n) + 0.5) * (2 * r / n) - r;
+      return dx * dx + dy * dy <= r * r && !(v === nodata || v === undefined || v === null || Number.isNaN(v));
+    });
+    if (!vals.length) return null;
+    if (!categorical) return vals.reduce((a, b) => a + b, 0) / vals.length;
+    const counts = new Map();
+    for (const v of vals) counts.set(v, (counts.get(v) || 0) + 1);
+    return [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
   } catch (err) {
     return null;
   }
@@ -525,17 +537,21 @@ async function collectTrackRows(latlng, token) {
       .filter((f) => state.layers[f])
       .map((f) => loadLazyLayer(f))
   );
-  const rows = [];
-  for (const track of TRACKS_VS) {
-    const gEntry = state.layers[`GMSI_VS_${track}.tif`];
-    const sEntry = state.layers[`GMSI_VS_shadow_layover_${track}.tif`];
-    if (!gEntry) continue;
-    if (token !== undefined && token !== state.summaryToken) return null;
-    const g = gEntry.leafletLayer ? await readRasterValue(gEntry.leafletLayer, latlng) : null;
-    const sh = sEntry && sEntry.leafletLayer ? await readRasterValue(sEntry.leafletLayer, latlng) : null;
-    rows.push({ track, g, geometryBlocked: sh === 5 || sh === 17 || sh === 21 });
-  }
-  return rows;
+  // all tracks in parallel
+  const rows = await Promise.all(
+    TRACKS_VS.map(async (track) => {
+      const gEntry = state.layers[`GMSI_VS_${track}.tif`];
+      const sEntry = state.layers[`GMSI_VS_shadow_layover_${track}.tif`];
+      if (!gEntry) return null;
+      const [g, sh] = await Promise.all([
+        gEntry.leafletLayer ? readRasterValue(gEntry.leafletLayer, latlng) : null,
+        sEntry && sEntry.leafletLayer ? readRasterValue(sEntry.leafletLayer, latlng, true) : null,
+      ]);
+      return { track, g, geometryBlocked: sh === 5 || sh === 17 || sh === 21 };
+    })
+  );
+  if (token !== undefined && token !== state.summaryToken) return null;
+  return rows.filter(Boolean);
 }
 
 async function buildTrackComparison(latlng, token, container) {
@@ -577,9 +593,35 @@ async function buildTrackComparison(latlng, token, container) {
   if (state.summaryPopup) state.summaryPopup.update(); // grow + re-pan into view
 }
 
+// the clicked spot and the circular buffer the point query reads, drawn on the map until the popup closes
+function clearSiteBuffer() {
+  if (state.siteMarks) { state.siteMarks.remove(); state.siteMarks = null; }
+}
+// the buffer radius in screen pixels at the current zoom, so the popup can sit above the whole circle
+function bufferPixels(latlng) {
+  const [x, y] = proj4("EPSG:4326", "EPSG:2056", [latlng.lng, latlng.lat]);
+  const [lng, lat] = proj4("EPSG:2056", "EPSG:4326", [x, y + Math.max(5, state.bufferRadius)]);
+  return Math.abs(state.map.latLngToLayerPoint(latlng).y - state.map.latLngToLayerPoint([lat, lng]).y);
+}
+const popupOffsetFor = (latlng) => L.point(0, 7 - Math.round(bufferPixels(latlng)));
+
+function drawSiteBuffer(latlng, x, y) {
+  clearSiteBuffer();
+  // circle markers are drawn in screen space, so they are truly round; the radius is re-set on every zoom
+  const px = bufferPixels(latlng);
+  state.siteRings = [
+    L.circleMarker(latlng, { radius: px, color: "#fff", weight: 4, fillOpacity: 0, interactive: false }),
+    L.circleMarker(latlng, { radius: px, color: "#0f172a", weight: 2, dashArray: "4 3", fillColor: "#0f172a", fillOpacity: 0.08, interactive: false }),
+  ];
+  state.siteMarks = L.layerGroup([
+    ...state.siteRings,
+    L.circleMarker(latlng, { radius: 5, color: "#fff", weight: 2, fillColor: "#e11d48", fillOpacity: 1, interactive: false }),
+  ]).addTo(state.map);
+}
+
 async function showSiteSummary(latlng) {
   const token = (state.summaryToken = (state.summaryToken || 0) + 1);
-  const popup = L.popup({ maxWidth: 300, className: "site-popup", autoPanPaddingTopLeft: [20, 70], autoPanPaddingBottomRight: [20, 20] })
+  const popup = L.popup({ maxWidth: 300, className: "site-popup", offset: popupOffsetFor(latlng), autoPanPaddingTopLeft: [20, 70], autoPanPaddingBottomRight: [20, 20] })
     .setLatLng(latlng)
     .setContent(t("summary.loading"))
     .openOn(state.map);
@@ -588,13 +630,16 @@ async function showSiteSummary(latlng) {
   scheduleHashUpdate();
 
   const [x, y] = proj4("EPSG:4326", "EPSG:2056", [latlng.lng, latlng.lat]);
+  drawSiteBuffer(latlng, x, y);
   const heightPromise = fetchHeight(x.toFixed(0), y.toFixed(0));
   const terrainPromise = fetchTerrain(Math.round(x), Math.round(y));
 
   const composite = state.layers["GMSI_VS_composite.tif"];
-  const cv = composite && composite.leafletLayer ? await readRasterValue(composite.leafletLayer, latlng) : null;
   const bestOrbit = state.layers["GMSI_VS_best_orbit.tif"];
-  const ov = bestOrbit && bestOrbit.leafletLayer ? await readRasterValue(bestOrbit.leafletLayer, latlng) : null;
+  const [cv, ov] = await Promise.all([
+    composite && composite.leafletLayer ? readRasterValue(composite.leafletLayer, latlng) : null,
+    bestOrbit && bestOrbit.leafletLayer ? readRasterValue(bestOrbit.leafletLayer, latlng, true) : null,
+  ]);
   if (token !== state.summaryToken) return;
 
   const verdict = verdictFor(cv);
@@ -608,7 +653,7 @@ async function showSiteSummary(latlng) {
 
   const track = ov !== null ? ORBIT_INDEX_ORDER[Math.round(ov)] : null;
   // what the export needs from this query
-  state.lastSite = { latlng, x, y, cv, verdict, bestTrack: track && TRACK_INFO[track] ? `${track} (${TRACK_INFO[track].richtung})` : "", height: null, rows: null, terrain: null };
+  state.lastSite = { latlng, x, y, radius: state.bufferRadius, cv, verdict, bestTrack: track && TRACK_INFO[track] ? `${track} (${TRACK_INFO[track].richtung})` : "", height: null, rows: null, terrain: null };
   if (track && TRACK_INFO[track]) {
     const p = el("p", "best-track");
     p.appendChild(el("strong", "", t("summary.bestTrack")));
@@ -647,6 +692,19 @@ async function showSiteSummary(latlng) {
     if (tr.hint && tr.hint !== "flat") terrainBox.appendChild(el("p", "terrain-hint", t("summary.terrain." + tr.hint)));
     popup.update();
   });
+
+  const bufRow = el("label", "site-buffer", t("summary.buffer"));
+  bufRow.title = t("summary.bufferHint");
+  const bufIn = el("input");
+  bufIn.type = "number"; bufIn.min = "5"; bufIn.max = "500"; bufIn.step = "5"; bufIn.value = String(state.bufferRadius);
+  bufRow.append(bufIn, document.createTextNode(" m"));
+  bufIn.addEventListener("change", () => {
+    const v = Math.round(Number(bufIn.value));
+    if (!Number.isFinite(v)) { bufIn.value = String(state.bufferRadius); return; }
+    state.bufferRadius = Math.min(500, Math.max(5, v));
+    showSiteSummary(latlng);
+  });
+  box.appendChild(bufRow);
 
   const foot = el("p", "site-foot");
   box.appendChild(foot);
@@ -838,8 +896,15 @@ async function loadProject(fileList, options = {}) {
 
   buildSidebar();
   setMode("easy");
+  state.map.on("zoomend", () => { // the circle changes its pixel size: keep the popup above it
+    if (state.summaryPopup && state.pin && state.map.hasLayer(state.summaryPopup)) {
+      state.summaryPopup.options.offset = popupOffsetFor(state.pin);
+      state.summaryPopup.update();
+      if (state.siteRings) state.siteRings.forEach((c) => c.setRadius(bufferPixels(state.pin)));
+    }
+  });
   state.map.on("popupclose", (ev) => {
-    if (ev.popup === state.summaryPopup) { state.pin = null; scheduleHashUpdate(); }
+    if (ev.popup === state.summaryPopup) { state.pin = null; clearSiteBuffer(); scheduleHashUpdate(); }
   });
   state.map.on("moveend", scheduleHashUpdate);
   applyHashState();

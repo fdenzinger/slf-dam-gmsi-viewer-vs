@@ -757,3 +757,6 @@ body:not(.tour-active) #tour-line { display: none !important; }
 #intro-collapsed.hidden { display: none; }
 
 #about-modal-box .about-cite { margin-top: 0.6em; }
+
+.site-buffer { display: block; margin: 8px 0 4px; font-size: 12px; color: #475569; }
+.site-buffer input { width: 56px; margin-left: 4px; font-size: 12px; padding: 1px 3px; }

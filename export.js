@@ -134,6 +134,13 @@ async function drawMap(ctx, x, y, w, h, extent, opts) {
   }
   if (opts.marker) {
     const [mx, my] = toPx(opts.marker[0], opts.marker[1]);
+    if (opts.radius) { // the buffer the point query averages over
+      const rpx = opts.radius / ((extent[2] - extent[0]) / w);
+      ctx.beginPath(); ctx.arc(mx, my, rpx, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(15,23,42,0.10)"; ctx.fill();
+      ctx.lineWidth = 8; ctx.strokeStyle = "#fff"; ctx.stroke();
+      ctx.lineWidth = 3.5; ctx.strokeStyle = "#111"; ctx.setLineDash([14, 9]); ctx.stroke(); ctx.setLineDash([]);
+    }
     ctx.beginPath(); ctx.arc(mx, my, 13, 0, Math.PI * 2);
     ctx.fillStyle = "#fff"; ctx.fill();
     ctx.beginPath(); ctx.arc(mx, my, 8, 0, Math.PI * 2);
@@ -272,7 +279,7 @@ async function renderPointReport(m) {
   const { cv, ctx } = newReportCanvas();
   await drawHeader(ctx, t("export.title.point"));
   const mapX = 60, mapY = 160, mapW = EXPORT_W - 120, mapH = 560;
-  await drawMap(ctx, mapX, mapY, mapW, mapH, m.extent, { marker: m.marker });
+  await drawMap(ctx, mapX, mapY, mapW, mapH, m.extent, { marker: m.marker, radius: m.radius });
   let y = mapY + mapH + 40;
   // verdict band
   ctx.fillStyle = VERDICT_COLORS[m.verdict.cls] || "#777"; ctx.fillRect(60, y, EXPORT_W - 120, 64);
@@ -298,6 +305,7 @@ async function renderPointReport(m) {
     for (const l of wrapLines(ctx, m.rowsMsg, EXPORT_W - 120)) { ctx.fillText(l, 60, y); y += 31; }
   }
   y += 22; ctx.fillStyle = "#475569"; ctx.font = `400 21px ${EXPORT_FONT}`; ctx.fillText(m.coordText, 60, y);
+  if (m.bufferText) { y += 32; ctx.fillText(m.bufferText, 60, y); }
   if (m.terrainText) { y += 32; ctx.font = `400 21px ${EXPORT_FONT}`; ctx.fillText(m.terrainText, 60, y); }
   if (m.terrainHint) { ctx.font = `400 19px ${EXPORT_FONT}`; ctx.fillStyle = "#64748b"; for (const l of wrapLines(ctx, m.terrainHint, EXPORT_W - 120)) { y += 27; ctx.fillText(l, 60, y); } }
   cv.links = await drawFooter(ctx, m.note);
@@ -350,12 +358,14 @@ async function buildPointModel() {
   }));
   const good = (s.rows || []).filter((r) => r.g !== null && r.g >= 0.4).length;
   const fmt = (n) => Math.round(n).toLocaleString("de-CH");
-  const half = 600;
+  const radius = s.radius || state.bufferRadius;
+  const half = Math.max(600, radius * 3); // the circle has to fit into the map's height
   return {
-    kind: "point", marker: [s.x, s.y], extent: fitExtent([s.x - half, s.y - half * 0.5, s.x + half, s.y + half * 0.5], EXPORT_W - 120, 560, 0),
+    kind: "point", marker: [s.x, s.y], radius, extent: fitExtent([s.x - half, s.y - half * 0.5, s.x + half, s.y + half * 0.5], EXPORT_W - 120, 560, 0),
     verdict: s.verdict, valueText: s.cv !== null && s.cv >= 0 ? `GMSI ${s.cv.toFixed(2)}` : "", value: s.cv,
     bestTrack: s.bestTrack, rows,
     rowsMsg: rows.length ? (good === 0 ? t("summary.msg.none") : good === 1 ? t("summary.msg.one") : t("summary.msg.many", { good, total: rows.length })) : "",
+    bufferText: t("summary.bufferInfo", { r: radius }),
     coordText: `LV95 E ${fmt(s.x)} / N ${fmt(s.y)}` + (s.height != null ? ` · ${s.height}${t("summary.elevation")}` : ""),
     terrainText: s.terrain ? (s.terrain.aspect === null ? t("summary.terrain.flat") : t("summary.terrain", { slope: Math.round(s.terrain.slope), dir: aspectLabel(s.terrain.aspect) })) : "",
     terrainHint: s.terrain && s.terrain.hint && s.terrain.hint !== "flat" ? t("summary.terrain." + s.terrain.hint) : "",
@@ -396,7 +406,7 @@ function pointCsv(m) {
   const s = m.site;
   const rows = [
     [t("app.title"), t("export.title.point")], ["date", new Date().toISOString().slice(0, 10)],
-    ["E_LV95", Math.round(s.x)], ["N_LV95", Math.round(s.y)], ["height_m", s.height ?? ""],
+    ["E_LV95", Math.round(s.x)], ["N_LV95", Math.round(s.y)], ["buffer_radius_m", m.radius], ["height_m", s.height ?? ""],
     ["slope_deg", s.terrain ? s.terrain.slope.toFixed(1) : ""], ["aspect_deg", s.terrain && s.terrain.aspect !== null ? s.terrain.aspect.toFixed(0) : ""],
     ["verdict", s.verdict.title], ["gmsi_composite", s.cv !== null && s.cv >= 0 ? s.cv.toFixed(3) : ""], ["best_track", s.bestTrack || ""], [],
     ["track", "direction", "gmsi", "note"],
